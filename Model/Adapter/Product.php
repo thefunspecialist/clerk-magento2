@@ -20,55 +20,59 @@ use Magento\Catalog\Model\ProductRepository;
 
 class Product extends AbstractAdapter
 {
-    /**
-     * @var LoggerInterface
-     */
+  /**
+   * @var LoggerInterface
+   */
     protected $clerk_logger;
 
     /**
-     * @var CollectionFactory
-     */
+   * @var RequestInterface
+   */
+    protected $requestInterface;
+  /**
+   * @var CollectionFactory
+   */
     protected $collectionFactory;
 
-    /**
-     * @var Image
-     */
+  /**
+   * @var Image
+   */
     protected $imageHelper;
 
-    /**
-     * @var string
-     */
+  /**
+   * @var string
+   */
     protected $eventPrefix = 'product';
-    /**
-     * @var
-     */
+  /**
+   * @var
+   */
     protected $_stockFilter;
 
-    /**
-     * @var
-     */
+  /**
+   * @var
+   */
     protected $storeManager;
 
-    /**
-     * @var
-     */
+  /**
+   * @var
+   */
     protected $taxHelper;
 
-    /**
-     * @var array
-     */
+  /**
+   * @var array
+   */
     protected $fieldMap = [
-        'entity_id' => 'id',
+    'entity_id' => 'id',
     ];
 
-    /**
-     * @var StockStateInterface
-     */
+  /**
+   * @var StockStateInterface
+   */
     protected $StockStateInterface;
 
-    /**
-     * @var ProductMetadataInterface
-     */
+  /**
+   * @var ProductMetadataInterface
+   */
     protected $ProductMetadataInterface;
 
     protected ProductRepository $_productRepository;
@@ -94,10 +98,9 @@ class Product extends AbstractAdapter
         Data $taxHelper,
         StockStateInterface $StockStateInterface,
         ProductMetadataInterface $ProductMetadataInterface,
-        ProductRepository $productRepository
-
-    )
-    {
+        ProductRepository $productRepository,
+        \Magento\Framework\App\RequestInterface $requestInterface
+    ) {
         $this->taxHelper = $taxHelper;
         $this->_stockFilter = $stockFilter;
         $this->clerk_logger = $Clerklogger;
@@ -106,14 +109,15 @@ class Product extends AbstractAdapter
         $this->StockStateInterface = $StockStateInterface;
         $this->ProductMetadataInterface = $ProductMetadataInterface;
         $this->_productRepository = $productRepository;
+        $this->requestInterface = $requestInterface;
         parent::__construct($scopeConfig, $eventManager, $storeManager, $collectionFactory, $Clerklogger);
     }
 
-    /**
-     * Prepare collection
-     *
-     * @return mixed
-     */
+  /**
+   * Prepare collection
+   *
+   * @return mixed
+   */
     protected function prepareCollection($page, $limit, $orderBy, $order, $scope, $scopeid)
     {
         try {
@@ -161,12 +165,12 @@ class Product extends AbstractAdapter
             }
 
             $collection->setPageSize($limit)
-                ->setCurPage($page)
-                ->addOrder($orderBy, $order);
+                 ->setCurPage($page)
+                 ->addOrder($orderBy, $order);
 
             $this->eventManager->dispatch('clerk_' . $this->eventPrefix . '_get_collection_after', [
-                'adapter' => $this,
-                'collection' => $collection
+            'adapter' => $this,
+            'collection' => $collection
             ]);
 
 
@@ -180,13 +184,13 @@ class Product extends AbstractAdapter
         }
     }
 
-    /**
-     * Get attribute value for product
-     *
-     * @param $resourceItem
-     * @param $field
-     * @return mixed
-     */
+  /**
+   * Get attribute value for product
+   *
+   * @param $resourceItem
+   * @param $field
+   * @return mixed
+   */
     protected function getAttributeValue($resourceItem, $field)
     {
         try {
@@ -194,7 +198,10 @@ class Product extends AbstractAdapter
             $attribute = $resourceItem->getResource()->getAttribute($field);
 
             if ($attribute->usesSource()) {
-                return $attribute->getSource()->getOptionText($resourceItem[$field]);
+                $source = $attribute->getSource();
+                if ($source) {
+                    return $source->getOptionText($resourceItem[$field]);
+                }
             }
 
             return parent::getAttributeValue($resourceItem, $field);
@@ -206,13 +213,23 @@ class Product extends AbstractAdapter
         }
     }
 
-    /**
-     * Add field handlers for products
-     */
+  /**
+   * Add field handlers for products
+   */
     protected function addFieldHandlers()
     {
 
         try {
+
+            $this->addFieldHandler('description_html', function ($item) {
+                $description = $this->getAttributeValue($item, 'description') ? htmlentities($this->getAttributeValue($item, 'description'), ENT_QUOTES) : '';
+                return $description;
+            });
+
+            $this->addFieldHandler('description', function ($item) {
+                $description = $this->getAttributeValue($item, 'description') ? str_replace(array("\r", "\n"), ' ', strip_tags($this->getAttributeValue($item, 'description'))) : '';
+                return $description;
+            });
 
             //Add price fieldhandler
             $this->addFieldHandler('price', function ($item) {
@@ -220,12 +237,12 @@ class Product extends AbstractAdapter
 
                     $price = $this->taxHelper->getTaxPrice($item, $item->getFinalPrice(), true);
 
-                    //Fix for configurable products
+                  //Fix for configurable products
                     if ($item->getTypeId() === Configurable::TYPE_CODE) {
                         $price = $item->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
                     }
 
-                    //Fix for Grouped products
+                  //Fix for Grouped products
                     if ($item->getTypeId() === "grouped") {
                         $associatedProducts = $item->getTypeInstance()->getAssociatedProducts($item);
 
@@ -236,13 +253,13 @@ class Product extends AbstractAdapter
                                 if (empty($price)) {
 
                                     $price = $this->taxHelper->getTaxPrice($associatedProduct, $associatedProduct->getFinalPrice(), true);
-                                    $price = str_replace(',','', $price);
+                                    $price = str_replace(',', '', $price);
 
 
                                 } elseif ($price > $associatedProduct->getPrice()) {
 
                                     $price = $this->taxHelper->getTaxPrice($associatedProduct, $associatedProduct->getFinalPrice(), true);
-                                    $price = str_replace(',','', $price);
+                                    $price = str_replace(',', '', $price);
 
                                 }
                             }
@@ -252,10 +269,10 @@ class Product extends AbstractAdapter
                     if ($item->getTypeId() === Bundle::TYPE_CODE) {
                         //Get minimum price for bundle products
                         $price = $item
-                            ->getPriceInfo()
-                            ->getPrice('final_price')
-                            ->getMinimalPrice()
-                            ->getValue();
+                        ->getPriceInfo()
+                        ->getPrice('final_price')
+                        ->getMinimalPrice()
+                        ->getValue();
 
                     }
 
@@ -263,26 +280,26 @@ class Product extends AbstractAdapter
                         $price = $this->taxHelper->getTaxPrice($item, $item->getFinalPrice(), true);
                     }
 
-                    return number_format( (float)$price, 2 );
+                    return number_format((float)$price, 2);
                 } catch (\Exception $e) {
                     return 0;
                 }
             });
 
-            //Add list_price fieldhandler
+          //Add list_price fieldhandler
             $this->addFieldHandler('list_price', function ($item) {
                 try {
 
                     $price = $this->taxHelper->getTaxPrice($item, $item->getPrice(), true);
 
-                    //Fix for configurable products
+            //Fix for configurable products
                     if ($item->getTypeId() === Configurable::TYPE_CODE) {
-                        $price = $item->getPriceInfo()->getPrice('regular_price')->getAmount()->getValue();
+                            $price = $item->getPriceInfo()->getPrice('regular_price')->getAmount()->getValue();
                     }
 
-                    //Fix for Grouped products
+            //Fix for Grouped products
                     if ($item->getTypeId() === "grouped") {
-                        $associatedProducts = $item->getTypeInstance()->getAssociatedProducts($item);
+                          $associatedProducts = $item->getTypeInstance()->getAssociatedProducts($item);
 
                         if (!empty($associatedProducts)) {
 
@@ -291,13 +308,13 @@ class Product extends AbstractAdapter
                                 if (empty($price)) {
 
                                     $price = $this->taxHelper->getTaxPrice($associatedProduct, $associatedProduct->getPrice(), true);
-                                    $price = str_replace(',','', $price);
+                                    $price = str_replace(',', '', $price);
 
 
                                 } elseif ($price > $associatedProduct->getPrice()) {
 
                                     $price = $this->taxHelper->getTaxPrice($associatedProduct, $associatedProduct->getPrice(), true);
-                                    $price = str_replace(',','', $price);
+                                    $price = str_replace(',', '', $price);
 
                                 }
                             }
@@ -306,28 +323,28 @@ class Product extends AbstractAdapter
 
                     if ($item->getTypeId() === Bundle::TYPE_CODE) {
                         $price = $item
-                            ->getPriceInfo()
-                            ->getPrice('regular_price')
-                            ->getMinimalPrice()
-                            ->getValue();
+                          ->getPriceInfo()
+                          ->getPrice('regular_price')
+                          ->getMinimalPrice()
+                          ->getValue();
                     }
 
                     if ($item->getTypeId() === 'simple') {
                         $price = $this->taxHelper->getTaxPrice($item, $item->getPrice(), true);
                     }
 
-                    return number_format( (float)$price, 2);
+                    return number_format((float)$price, 2);
                 } catch (\Exception $e) {
                     return 0;
                 }
             });
 
             $this->addFieldHandler('tier_price_values', function ($item) {
-                $holderArray = [];
-                $tierPriceObj = $item->getTierPrice();
-                if(count($tierPriceObj) > 0){
-                    foreach($tierPriceObj as $price){
-                        if(isset($price['price'])){
+                  $holderArray = [];
+                  $tierPriceObj = $item->getTierPrice();
+                if (count($tierPriceObj) > 0) {
+                    foreach ($tierPriceObj as $price) {
+                        if (isset($price['price'])) {
                             array_push($holderArray, floatval($price['price']));
                         }
                     }
@@ -336,13 +353,13 @@ class Product extends AbstractAdapter
             });
 
             $this->addFieldHandler('tier_price_quantities', function ($item) {
-                $holderArray = [];
-                $tierPriceObj = $item->getTierPrice();
-                if(count($tierPriceObj) > 0){
-                    foreach($tierPriceObj as $price){
-                        //$value = $price->getQty();
-                        //array_push($holderArray, $value);
-                        if(isset($price['price_qty'])){
+                  $holderArray = [];
+                  $tierPriceObj = $item->getTierPrice();
+                if (count($tierPriceObj) > 0) {
+                    foreach ($tierPriceObj as $price) {
+                            //$value = $price->getQty();
+                            //array_push($holderArray, $value);
+                        if (isset($price['price_qty'])) {
                             array_push($holderArray, floatval($price['price_qty']));
                         }
                     }
@@ -350,34 +367,63 @@ class Product extends AbstractAdapter
                 return $holderArray;
             });
 
-            //Add image fieldhandler
+          //Add image fieldhandler
             $this->addFieldHandler('image', function ($item) {
-                $imageUrl = $this->imageHelper->getUrl($item);
+                  $imageUrl = $this->imageHelper->getUrl($item);
 
-                return $imageUrl;
+                  return $imageUrl;
             });
 
             //Add url fieldhandler
             $this->addFieldHandler('url', function ($item) {
-                return $item->setStoreId($this->storeManager->getStore()->getId())->getUrlInStore();
+                $_params = $this->requestInterface->getParams();
+                if (array_key_exists('scope_id', $_params)){
+                    $storeId = $_params['scope_id'];
+                } else {
+                    $storeId = $this->storeManager->getStore()->getId();
+                }
+                return $item->setStoreId($storeId)->getUrlInStore();
             });
 
-            //Add categories fieldhandler
+          //Add categories fieldhandler
             $this->addFieldHandler('categories', function ($item) {
-                return $item->getCategoryIds();
+                  return $item->getCategoryIds();
             });
 
-            //Add stock fieldhandler
+            $this->addFieldHandler('child_stocks', function ($item) {
+                  $productType = $item->getTypeID();
+                  $StockState = $this->StockStateInterface;
+                  $stock_list = [];
+                switch ($productType) {
+                    case 'configurable':
+                              $productTypeInstance = $item->getTypeInstance();
+                              $usedProducts = $productTypeInstance->getUsedProducts($item);
+                        foreach ($usedProducts as $simple) {
+                            $stock_list[] = $StockState->getStockQty($simple->getId(), $simple->getStore()->getWebsiteId());
+                        }
+                        break;
+                    case 'grouped':
+                            $productTypeInstance = $item->getTypeInstance();
+                            $usedProducts = $productTypeInstance->getAssociatedProducts($item);
+                        foreach ($usedProducts as $simple) {
+                            $stock_list[] = $StockState->getStockQty($simple->getId(), $simple->getStore()->getWebsiteId());
+                        }
+                        break;
+                }
+                return $stock_list;
+            });
+
+          //Add stock fieldhandler
             $this->addFieldHandler('stock', function ($item) {
                 $productType = $item->getTypeID();
                 $StockState = $this->StockStateInterface;
                 $total_stock = 0;
                 $product = $this->getProductById($item->getId());
 
-                switch($productType){
+                switch ($productType) {
                     case 'configurable':
-                        $productTypeInstance = $item->getTypeInstance();
-                        $usedProducts = $productTypeInstance->getUsedProducts($item);
+                              $productTypeInstance = $item->getTypeInstance();
+                              $usedProducts = $productTypeInstance->getUsedProducts($item);
                         foreach ($usedProducts as $simple) {
                             $total_stock += $StockState->getStockQty($simple->getId(), $simple->getStore()->getWebsiteId());
                         }
@@ -402,13 +448,13 @@ class Product extends AbstractAdapter
 
                         break;
                     case 'bundle':
-                        // Get the inventory qty of each child item
-                        $productsArray = array();
-                        $selectionCollection = $item->getTypeInstance(true)
-                        ->getSelectionsCollection(
-                            $item->getTypeInstance(true)->getOptionsIds($item),
-                            $item
-                        );
+                          // Get the inventory qty of each child item
+                          $productsArray = [];
+                          $selectionCollection = $item->getTypeInstance(true)
+                                      ->getSelectionsCollection(
+                                          $item->getTypeInstance(true)->getOptionsIds($item),
+                                          $item
+                                      );
 
                         foreach ($selectionCollection as $proselection) {
                             $selectionArray = [];
@@ -417,11 +463,11 @@ class Product extends AbstractAdapter
                             $productsArray[$proselection->getOptionId()][$proselection->getSelectionId()] = $selectionArray;
                         }
 
-                        $bundle_stock = 0;
-                        foreach($productsArray as $_ => $bundle_item){
+                          $bundle_stock = 0;
+                        foreach ($productsArray as $_ => $bundle_item) {
                             $bundle_option_min_stock = 0;
-                            foreach($bundle_item as $__ => $bundle_option){
-                                if((integer)$bundle_option['min_qty'] <= $bundle_option['stock']){
+                            foreach ($bundle_item as $__ => $bundle_option) {
+                                if ((integer)$bundle_option['min_qty'] <= $bundle_option['stock']) {
                                     $bundle_option_min_stock = ($bundle_option_min_stock == 0) ? $bundle_option['stock'] : $bundle_option_min_stock;
                                     $bundle_option_min_stock = ($bundle_option_min_stock < $bundle_option['stock']) ? $bundle_option['stock'] : $bundle_option_min_stock;
                                 }
@@ -444,49 +490,49 @@ class Product extends AbstractAdapter
                 return $total_stock;
             });
 
-            //Add age fieldhandler
+          //Add age fieldhandler
             $this->addFieldHandler('age', function ($item) {
-                $createdAt = strtotime($item->getCreatedAt());
-                $now = time();
-                $diff = $now - $createdAt;
-                return floor($diff / (60 * 60 * 24));
+                  $createdAt = strtotime($item->getCreatedAt());
+                  $now = time();
+                  $diff = $now - $createdAt;
+                  return floor($diff / (60 * 60 * 24));
             });
 
-            //Add created_at fieldhandler
+          //Add created_at fieldhandler
             $this->addFieldHandler('created_at', function ($item) {
-                $createdAt = strtotime($item->getCreatedAt());
-                return $createdAt;
+                  $createdAt = strtotime($item->getCreatedAt());
+                  return $createdAt;
             });
 
             $this->addFieldHandler('product_type', function ($item) {
-                $type = $item->getTypeId();
-                return $type;
+                  $type = $item->getTypeId();
+                  return $type;
             });
 
             $this->addFieldHandler('manufacturer', function ($item) {
-                $brand = $item->getAttributeText('manufacturer');
-                return $brand;
+                  $brand = $this->getAttributeValue($item, 'manufacturer');
+                  return $brand;
             });
 
-            //Add on_sale fieldhandler
+        //Add on_sale fieldhandler
             $this->addFieldHandler('on_sale', function ($item) {
                 try {
                     $price = $item->getPrice();
                     $finalPrice = $item->getFinalPrice();
-                    //Fix for configurable products
+            //Fix for configurable products
                     if ($item->getTypeId() === Configurable::TYPE_CODE) {
-                        $price = $item->getPriceInfo()->getPrice('regular_price')->getAmount()->getValue();
-                        $finalPrice = $item->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
+                            $price = $item->getPriceInfo()->getPrice('regular_price')->getAmount()->getValue();
+                            $finalPrice = $item->getPriceInfo()->getPrice('final_price')->getAmount()->getValue();
                     }
 
                     if ($item->getTypeId() === Bundle::TYPE_CODE) {
-                        $price = $item
+                          $price = $item
                             ->getPriceInfo()
                             ->getPrice('regular_price')
                             ->getMinimalPrice()
                             ->getValue();
 
-                        $finalPrice = $item
+                          $finalPrice = $item
                             ->getPriceInfo()
                             ->getPrice('final_price')
                             ->getMinimalPrice()
@@ -506,39 +552,40 @@ class Product extends AbstractAdapter
         }
     }
 
-    /**
-     * Get default product fields
-     *
-     * @return array
-     */
+  /**
+   * Get default product fields
+   *
+   * @return array
+   */
     protected function getDefaultFields($scope, $scopeid)
     {
 
         try {
 
             $fields = [
-                'name',
-                'description',
-                'price',
-                'list_price',
-                'image',
-                'url',
-                'categories',
-                'manufacturer',
-                'sku',
-                'age',
-                'created_at',
-                'on_sale',
-                'stock',
-                'product_type',
-                'tier_price_values',
-                'tier_price_quantities'
+            'name',
+            'description',
+            'price',
+            'list_price',
+            'image',
+            'url',
+            'categories',
+            'manufacturer',
+            'sku',
+            'age',
+            'created_at',
+            'on_sale',
+            'stock',
+            'product_type',
+            'tier_price_values',
+            'tier_price_quantities',
+            'child_stocks'
             ];
 
             $additionalFields = $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_ADDITIONAL_FIELDS, $scope, $scopeid);
 
             if ($additionalFields) {
-                $fields = array_merge($fields, str_replace(' ','' ,explode(',', $additionalFields)));
+                $fields = array_merge($fields, str_replace(' ', '', explode(',', $additionalFields)));
             }
 
             foreach ($fields as $key => $field) {

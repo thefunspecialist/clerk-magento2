@@ -25,17 +25,37 @@ class Tracking extends Template
      */
     public function getPublicKey()
     {
+
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
+
         return $this->_scopeConfig->getValue(
             Config::XML_PATH_PUBLIC_KEY,
-            ScopeInterface::SCOPE_STORE
+            $scope,
+            $scope_id
         );
     }
 
     public function getLanguage()
     {
+
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
+
         return $this->_scopeConfig->getValue(
             Config::XML_PATH_LANGUAGE,
-            ScopeInterface::SCOPE_STORE
+            $scope,
+            $scope_id
         );
     }
 
@@ -46,9 +66,19 @@ class Tracking extends Template
      */
     public function getCollectionEmails()
     {
+
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
+
         return ($this->_scopeConfig->isSetFlag(
             Config::XML_PATH_PRODUCT_SYNCHRONIZATION_COLLECT_EMAILS,
-            ScopeInterface::SCOPE_STORE
+            $scope,
+            $scope_id
         ) ? 'true' : 'false');
     }
 
@@ -59,16 +89,25 @@ class Tracking extends Template
      */
     public function getCollectionBaskets()
     {
+
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
+
         $collectBaskets = "false";
-        if($this->_scopeConfig->getValue('clerk/product_synchronization/collect_baskets', ScopeInterface::SCOPE_STORE) == '1'){
+        if ($this->_scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_COLLECT_BASKETS, $scope, $scope_id) == '1') {
             $collectBaskets = "true";
         }
         return $collectBaskets;
     }
 
-    public function getFormKey() {
+    public function getFormKey()
+    {
 
         return $this->formKey->getFormKey();
-
     }
 }

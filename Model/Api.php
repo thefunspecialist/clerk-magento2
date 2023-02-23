@@ -36,35 +36,41 @@ class Api
     protected $baseurl = 'http://api.clerk.io/v2/';
 
     /**
+     * @var RequestInterface
+     */
+    protected $requestInterface;
+
+    /**
      * Api constructor
      *
      * @param ScopeConfigInterface $scopeConfig
+     * @param \Magento\Framework\App\RequestInterface $requestInterface
      */
     public function __construct(
         LoggerInterface $logger,
         ScopeConfigInterface $scopeConfig,
         ZendClientFactory $httpClientFactory,
-        ClerkLogger $Clerklogger
-    )
-    {
+        ClerkLogger $Clerklogger,
+        \Magento\Framework\App\RequestInterface $requestInterface
+    ) {
         $this->clerk_logger = $Clerklogger;
         $this->logger = $logger;
         $this->scopeConfig = $scopeConfig;
         $this->httpClientFactory = $httpClientFactory;
+        $this->requestInterface = $requestInterface;
     }
 
     /**
      * Add product
      */
-    public function addProduct($params)
+    public function addProduct($params, $store_id = null)
     {
         try {
-
             $params = [
                 'products' => [$params],
             ];
 
-            $this->post('product/add', $params);
+            $this->post('product/add', $params, $store_id);
             $this->clerk_logger->log('Added Product', ['response' => $params]);
 
         } catch (\Exception $e) {
@@ -81,11 +87,11 @@ class Api
      * @param array $params
      * @throws \Zend_Http_Client_Exception
      */
-    private function post($endpoint, $params = [])
+    private function post($endpoint, $params = [], $store_id = null)
     {
         try {
 
-            $params = array_merge($this->getDefaultParams(), $params);
+            $params = array_merge($this->getDefaultParams($store_id), $params);
 
             /** @var \Magento\Framework\HTTP\ZendClient $httpClient */
             $httpClient = $this->httpClientFactory->create();
@@ -101,11 +107,28 @@ class Api
         }
     }
 
-    private function getDefaultParams()
+    private function getDefaultParams($store_id = null)
     {
+        if(null === $store_id){
+            $_params = $this->requestInterface->getParams();
+            $scope_id = '0';
+            $scope = 'default';
+            if (array_key_exists('website', $_params)){
+                $scope = 'website';
+                $scope_id = $_params[$scope];
+            }
+            if (array_key_exists('store', $_params)){
+                $scope = 'store';
+                $scope_id = $_params[$scope];
+            }
+        } else {
+            $scope = 'store';
+            $scope_id = $store_id;
+        }
+
         return [
-            'key' => $this->scopeConfig->getValue(Config::XML_PATH_PUBLIC_KEY, ScopeInterface::SCOPE_STORE),
-            'private_key' => $this->scopeConfig->getValue(Config::XML_PATH_PRIVATE_KEY, ScopeInterface::SCOPE_STORE),
+            'key' => $this->scopeConfig->getValue(Config::XML_PATH_PUBLIC_KEY, $scope, $scope_id),
+            'private_key' => $this->scopeConfig->getValue(Config::XML_PATH_PRIVATE_KEY, $scope, $scope_id),
         ];
     }
 
@@ -115,7 +138,7 @@ class Api
      * @param $productId
      * @throws \Zend_Http_Client_Exception
      */
-    public function removeProduct($productId)
+    public function removeProduct($productId, $store_id = null)
     {
         try {
 
@@ -123,7 +146,7 @@ class Api
                 'products' => [$productId],
             ];
 
-            $this->get('product/remove', $params);
+            $this->get('product/remove', $params, $store_id);
             $this->clerk_logger->log('Removed Product', ['response' => $params]);
 
         } catch (\Exception $e) {
@@ -141,11 +164,11 @@ class Api
      * @return \Zend_Http_Response
      * @throws \Zend_Http_Client_Exception
      */
-    private function get($endpoint, $params = [])
+    private function get($endpoint, $params = [], $store_id = null)
     {
         try {
 
-            $params = array_merge($this->getDefaultParams(), $params);
+            $params = array_merge($this->getDefaultParams($store_id), $params);
 
             /** @var \Magento\Framework\HTTP\ZendClient $httpClient */
             $httpClient = $this->httpClientFactory->create();
@@ -248,10 +271,20 @@ class Api
     public function getContent($storeId = null)
     {
         try {
-
+            $_params = $this->requestInterface->getParams();
+            $scope_id = '0';
+            $scope = 'default';
+            if (array_key_exists('website', $_params)) {
+                $scope = 'website';
+                $scope_id = $_params[$scope];
+            }
+            if (array_key_exists('store', $_params)) {
+                $scope = 'store';
+                $scope_id = $_params[$scope];
+            }
             $params = [
-                'key' => $this->scopeConfig->getValue(Config::XML_PATH_PUBLIC_KEY, ScopeInterface::SCOPE_STORE),
-                'private_key' => $this->scopeConfig->getValue(Config::XML_PATH_PRIVATE_KEY, ScopeInterface::SCOPE_STORE),
+                'key' => $this->scopeConfig->getValue(Config::XML_PATH_PUBLIC_KEY, $scope, $scope_id),
+                'private_key' => $this->scopeConfig->getValue(Config::XML_PATH_PRIVATE_KEY, $scope, $scope_id),
             ];
 
             return $this->get('client/account/content/list', $params)->getBody();

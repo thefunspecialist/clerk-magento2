@@ -67,8 +67,7 @@ abstract class AbstractAdapter
         StoreManagerInterface $storeManager,
         CollectionFactory $collectionFactory,
         ClerkLogger $clerkLogger
-    )
-    {
+    ) {
         $this->clerk_logger = $clerkLogger;
         $this->scopeConfig = $scopeConfig;
         $this->eventManager = $eventManager;
@@ -96,6 +95,11 @@ abstract class AbstractAdapter
     public function getResponse($fields, $page, $limit, $orderBy, $order, $scope, $scopeid)
     {
         try {
+
+            if ($this->storeManager->isSingleStoreMode()) {
+                $scope = 'store';
+                $scopeid = $this->storeManager->getDefaultStoreView()->getId();
+            }
 
             $this->setFields($fields, $scope, $scopeid);
 
@@ -133,7 +137,7 @@ abstract class AbstractAdapter
      * @param $resourceItem
      * @return array
      */
-    public function getInfoForItem($resourceItem,$scope, $scopeid)
+    public function getInfoForItem($resourceItem, $scope, $scopeid)
     {
         try {
 
@@ -148,11 +152,11 @@ abstract class AbstractAdapter
 
                 //21-10-2021 KKY Additional Fields for Configurable and grouped Products - start
                 $additionalFields = $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_ADDITIONAL_FIELDS, $scope, $scopeid);
-                $customFields = is_string($additionalFields) ? str_replace(' ','' ,explode(',', $additionalFields)) : array();
+                $customFields = is_string($additionalFields) ? str_replace(' ', '', explode(',', $additionalFields)) : [];
 
-                if(in_array($field, $customFields)){
+                if (in_array($field, $customFields)) {
 
-                    if ($resourceItem->getTypeId() === Configurable::TYPE_CODE){
+                    if ($resourceItem->getTypeId() === Configurable::TYPE_CODE) {
 
                         $configurablelist=[];
                         $entityField = 'entity_'.$field;
@@ -161,18 +165,19 @@ abstract class AbstractAdapter
                             foreach ($usedProducts as $simple) {
                                 if (isset($simple[$field])) {
                                     $configurablelist[] = $this->getAttributeValue($simple, $field);
-                                }elseif(isset($simple[$entityField])){
+                                } elseif (isset($simple[$entityField])) {
                                     $configurablelist[] = $this->getAttributeValue($simple, $entityField);
                                 }
                             }
                         }
-                        if(!empty($configurablelist)){
-                            $info["child_".$this->getFieldName($field)."s"] = array_values(array_unique($configurablelist, SORT_REGULAR));
+                        if (!empty($configurablelist)) {
+                            $configurablelist = is_array($configurablelist) ? $this->flattenArray($configurablelist) : $configurablelist;
+                            $info["child_".$this->getFieldName($field)."s"] = $configurablelist;
                         }
 
                     }
 
-                    if ($resourceItem->getTypeId() === "grouped"){
+                    if ($resourceItem->getTypeId() === "grouped") {
 
                         $groupedList=[];
                         $entityField = 'entity_'.$field;
@@ -183,14 +188,15 @@ abstract class AbstractAdapter
 
                                 if (isset($associatedProduct[$field])) {
                                     $groupedList[] = $this->getAttributeValue($associatedProduct, $field);
-                                }elseif(isset($associatedProduct[$entityField])){
+                                } elseif (isset($associatedProduct[$entityField])) {
                                     $groupedList[] = $this->getAttributeValue($associatedProduct, $entityField);
                                 }
                             }
                         }
 
-                        if(!empty($groupedList)){
-                            $info["child_".$this->getFieldName($field)."s"] = array_values(array_unique($groupedList, SORT_REGULAR));
+                        if (!empty($groupedList)) {
+                            $groupedList = is_array($groupedList) ? $this->flattenArray($groupedList) : $groupedList;
+                            $info["child_".$this->getFieldName($field)."s"] = $groupedList;
                         }
 
                     }
@@ -199,15 +205,14 @@ abstract class AbstractAdapter
 
                 if (isset($this->fieldHandlers[$field])) {
                     if (in_array($this->getFieldName($field), ['price','list_price'])) {
-                            $price = str_replace(',','',$this->fieldHandlers[$field]($resourceItem));
+                            $price = str_replace(',', '', $this->fieldHandlers[$field]($resourceItem));
                             $info[$this->getFieldName($field)] = (float)$price;
-                    }
-                    else {
+                    } else {
                         $info[$this->getFieldName($field)] = $this->fieldHandlers[$field]($resourceItem);
                     }
                 }
 
-                if (array_key_exists($this->getFieldName($field),$info) != true) {
+                if (array_key_exists($this->getFieldName($field), $info) != true) {
                     $info[$this->getFieldName($field)] = "";
                 }
             }
@@ -286,6 +291,15 @@ abstract class AbstractAdapter
     public function addFieldHandler($field, callable $handler)
     {
         $this->fieldHandlers[$field] = $handler;
+    }
+
+    public function flattenArray(array $array)
+    {
+        $return = [];
+        array_walk_recursive($array, function ($a) use (&$return) {
+            $return[] = $a;
+        });
+        return $return;
     }
 
     /**

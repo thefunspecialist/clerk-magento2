@@ -50,23 +50,27 @@ class Index extends AbstractAction
 
             $scopeID = 1;
 
-            if(null !== $this->getRequest()->getParam('scope_id')){
+            if (null !== $this->getRequest()->getParam('scope_id')) {
                 $scopeID = $this->getRequest()->getParam('scope_id');
             }
 
-            if($scope == 'store'){
+            if ($scope == 'store') {
                 $storeID = $scopeID;
                 $websiteID = null;
-            }elseif($scope == 'website'){
+            } elseif ($scope == 'website') {
                 $websiteID = $scopeID;
                 $storeID = null;
+            } elseif ($scope == 'default') {
+                $websiteID = $scopeID;
+                $storeID = $scopeID;
             }
-            
+
             $this->getResponse()
                 ->setHttpResponseCode(200)
                 ->setHeader('Content-Type', 'application/json', true);
 
             $response = [
+                'scopeNAME' => $scope,
                 'storeID' => $storeID,
                 'wepsiteID' => $websiteID,
                 'LANGUAGE' => $this->scopeConfig->getValue(Config::XML_PATH_LANGUAGE, $scope, $scopeID),
@@ -75,6 +79,7 @@ class Index extends AbstractAction
 
                 'PRODUCT_SYNCHRONIZATION_REAL_TIME_ENABLED' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_REAL_TIME_ENABLED, $scope, $scopeID),
                 'PRODUCT_SYNCHRONIZATION_COLLECT_EMAILS' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_COLLECT_EMAILS, $scope, $scopeID),
+                'PRODUCT_SYNCHRONIZATION_COLLECT_BASKETS' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_COLLECT_BASKETS, $scope, $scopeID),
                 'PRODUCT_SYNCHRONIZATION_ADDITIONAL_FIELDS' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_ADDITIONAL_FIELDS, $scope, $scopeID),
                 'PRODUCT_SYNCHRONIZATION_SALABLE_ONLY' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_SALABLE_ONLY, $scope, $scopeID),
                 'PRODUCT_SYNCHRONIZATION_VISIBILITY' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_VISIBILITY, $scope, $scopeID),
@@ -99,7 +104,7 @@ class Index extends AbstractAction
                 'FACETED_SEARCH_ATTRIBUTES' => $this->scopeConfig->getValue(Config::XML_PATH_FACETED_SEARCH_ATTRIBUTES, $scope, $scopeID),
                 'FACETED_SEARCH_MULTISELECT_ATTRIBUTES' => $this->scopeConfig->getValue(Config::XML_PATH_FACETED_SEARCH_MULTISELECT_ATTRIBUTES, $scope, $scopeID),
                 'FACETED_SEARCH_TITLES' => $this->scopeConfig->getValue(Config::XML_PATH_FACETED_SEARCH_TITLES, $scope, $scopeID),
-               
+
                 'LIVESEARCH_ENABLED' => $this->scopeConfig->getValue(Config::XML_PATH_LIVESEARCH_ENABLED, $scope, $scopeID),
                 'LIVESEARCH_INCLUDE_CATEGORIES' => $this->scopeConfig->getValue(Config::XML_PATH_LIVESEARCH_INCLUDE_CATEGORIES, $scope, $scopeID),
                 'LIVESEARCH_CATEGORIES' => $this->scopeConfig->getValue(Config::XML_PATH_LIVESEARCH_CATEGORIES, $scope, $scopeID),
@@ -114,23 +119,27 @@ class Index extends AbstractAction
                 'POWERSTEP_ENABLED' => $this->scopeConfig->getValue(Config::XML_PATH_POWERSTEP_ENABLED, $scope, $scopeID),
                 'POWERSTEP_TYPE' => $this->scopeConfig->getValue(Config::XML_PATH_POWERSTEP_TYPE, $scope, $scopeID),
                 'POWERSTEP_TEMPLATES' => $this->scopeConfig->getValue(Config::XML_PATH_POWERSTEP_TEMPLATES, $scope, $scopeID),
+                'POWERSTEP_FILTER_DUPLICATES' => $this->scopeConfig->getValue(Config::XML_PATH_POWERSTEP_FILTER_DUPLICATES, $scope, $scopeID),
 
                 'EXIT_INTENT_ENABLED' => $this->scopeConfig->getValue(Config::XML_PATH_EXIT_INTENT_ENABLED, $scope, $scopeID),
                 'EXIT_INTENT_TEMPLATE' => $this->scopeConfig->getValue(Config::XML_PATH_EXIT_INTENT_TEMPLATE, $scope, $scopeID),
 
                 'CATEGORY_ENABLED' => $this->scopeConfig->getValue(Config::XML_PATH_CATEGORY_ENABLED, $scope, $scopeID),
                 'CATEGORY_CONTENT' => $this->scopeConfig->getValue(Config::XML_PATH_CATEGORY_CONTENT, $scope, $scopeID),
+                'CATEGORY_FILTER_DUPLICATES' => $this->scopeConfig->getValue(Config::XML_PATH_CATEGORY_FILTER_DUPLICATES, $scope, $scopeID),
 
                 'PRODUCT_ENABLED' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_ENABLED, $scope, $scopeID),
                 'PRODUCT_CONTENT' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_CONTENT, $scope, $scopeID),
+                'PRODUCT_FILTER_DUPLICATES' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_FILTER_DUPLICATES, $scope, $scopeID),
 
                 'CART_ENABLED' => $this->scopeConfig->getValue(Config::XML_PATH_CART_ENABLED, $scope, $scopeID),
                 'CART_CONTENT' => $this->scopeConfig->getValue(Config::XML_PATH_CART_CONTENT, $scope, $scopeID),
+                'CART_FILTER_DUPLICATES' => $this->scopeConfig->getValue(Config::XML_PATH_CART_FILTER_DUPLICATES, $scope, $scopeID),
 
                 'LOG_LEVEL' => $this->scopeConfig->getValue(Config::XML_PATH_LOG_LEVEL, $scope, $scopeID),
                 'LOG_TO' => $this->scopeConfig->getValue(Config::XML_PATH_LOG_TO, $scope, $scopeID),
                 'LOG_ENABLED' => $this->scopeConfig->getValue(Config::XML_PATH_LOG_ENABLED, $scope, $scopeID)
-                
+
             ];
 
             if ($this->debug) {
@@ -143,6 +152,5 @@ class Index extends AbstractAction
             $this->clerk_logger->error('Getconfig execute ERROR', ['error' => $e->getMessage()]);
 
         }
-
     }
 }

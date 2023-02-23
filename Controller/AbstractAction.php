@@ -116,7 +116,7 @@ abstract class AbstractAction extends Action
      * @param ModuleList $moduleList
      * @param ClerkLogger $ClerkLogger
      */
-    public function __construct(Context $context, StoreManagerInterface $storeManager,  ScopeConfigInterface $scopeConfig, LoggerInterface $logger, ModuleList $moduleList, ClerkLogger $ClerkLogger)
+    public function __construct(Context $context, StoreManagerInterface $storeManager, ScopeConfigInterface $scopeConfig, LoggerInterface $logger, ModuleList $moduleList, ClerkLogger $ClerkLogger)
     {
         $this->moduleList = $moduleList;
         $this->scopeConfig = $scopeConfig;
@@ -144,8 +144,11 @@ abstract class AbstractAction extends Action
             $version = $productMetadata->getVersion();
             header('User-Agent: ClerkExtensionBot Magento 2/v' . $version . ' clerk/v' . $this->moduleList->getOne('Clerk_Clerk')['setup_version'] . ' PHP/v' . phpversion());
 
+            $this->privateKey = $request->getParam('private_key');
+            $this->publicKey = $request->getParam('key');
+
             //Validate supplied keys
-            if ($this->verifyKeys($request) == 0 && $this->verifyWebsiteKeys($request) == 0) {
+            if (($this->verifyKeys($request) === -1 && $this->verifyWebsiteKeys($request) === -1 && $this->verifyDefaultKeys($request) === -1) || !$this->privateKey || !$this->publicKey) {
                 $this->_actionFlag->set('', self::FLAG_NO_DISPATCH, true);
                 $this->_actionFlag->set('', self::FLAG_NO_POST_DISPATCH, true);
 
@@ -166,14 +169,23 @@ abstract class AbstractAction extends Action
                 return parent::dispatch($request);
             }
 
-            $scopeID = $this->verifyKeys($request);
-            $request->setParams(['scope_id' => $scopeID]);
-            $request->setParams(['scope' => 'store']);
-
-            if($this->verifyWebsiteKeys($request) !==0){
+            if ($this->verifyWebsiteKeys($request) !==-1) {
                 $scopeID = $this->verifyWebsiteKeys($request);
                 $request->setParams(['scope_id' => $scopeID]);
                 $request->setParams(['scope' => 'website']);
+            }
+
+            if ($this->verifyKeys($request) !==-1) {
+                $scopeID = $this->verifyKeys($request);
+                $request->setParams(['scope_id' => $scopeID]);
+                $request->setParams(['scope' => 'store']);
+
+            }
+
+            if ($this->_storeManager->isSingleStoreMode()) {
+                $scopeID = $this->verifyDefaultKeys($request);
+                $request->setParams(['scope_id' => $scopeID]);
+                $request->setParams(['scope' => 'default']);
             }
 
             //Filter out request arguments
@@ -193,6 +205,33 @@ abstract class AbstractAction extends Action
      * @param RequestInterface $request
      * @return bool
      */
+    private function verifyDefaultKeys(RequestInterface $request)
+    {
+
+        try {
+
+            $privateKey = $request->getParam('private_key');
+            $publicKey = $request->getParam('key');
+            $scopeID = $this->_storeManager->getDefaultStoreView()->getId();
+            if ($this->timingSafeEquals($this->getPrivateDefaultKey($scopeID), $privateKey) && $this->timingSafeEquals($this->getPublicDefaultKey($scopeID), $publicKey)) {
+                return $scopeID;
+            }
+
+            return -1;
+
+        } catch (\Exception $e) {
+
+            $this->clerk_logger->error('verifyKeys ERROR', ['error' => $e->getMessage()]);
+
+        }
+    }
+
+    /**
+     * Verify public & private key
+     *
+     * @param RequestInterface $request
+     * @return bool
+     */
     private function verifyKeys(RequestInterface $request)
     {
 
@@ -202,13 +241,13 @@ abstract class AbstractAction extends Action
             $publicKey = $request->getParam('key');
 
             $storeids = $this->getStores();
-            foreach($storeids as $scopeID){
-                if ($privateKey == $this->getPrivateKey($scopeID) && $publicKey == $this->getPublicKey($scopeID)) {
+            foreach ($storeids as $scopeID) {
+                if ($this->timingSafeEquals($this->getPrivateKey($scopeID), $privateKey) && $this->timingSafeEquals($this->getPublicKey($scopeID), $publicKey)) {
                     return $scopeID;
                 }
             }
 
-            return 0;
+            return -1;
 
         } catch (\Exception $e) {
 
@@ -232,13 +271,13 @@ abstract class AbstractAction extends Action
             $publicKey = $request->getParam('key');
 
             $websiteids = $this->getWebsites();
-            foreach($websiteids as $scopeID){
-                if ($privateKey == $this->getPrivateWebsiteKey($scopeID) && $publicKey == $this->getPublicWebsiteKey($scopeID)) {
+            foreach ($websiteids as $scopeID) {
+                if ($this->timingSafeEquals($this->getPrivateWebsiteKey($scopeID), $privateKey) && $this->timingSafeEquals($this->getPublicWebsiteKey($scopeID), $publicKey)) {
                     return $scopeID;
                 }
             }
 
-            return 0;
+            return -1;
 
         } catch (\Exception $e) {
 
@@ -246,6 +285,52 @@ abstract class AbstractAction extends Action
 
         }
     }
+
+
+    /**
+     * Get public store key
+     *
+     * @return string
+     */
+    private function getPublicDefaultKey($scopeID)
+    {
+        try {
+
+            return $this->scopeConfig->getValue(
+                Config::XML_PATH_PUBLIC_KEY,
+                ScopeInterface::SCOPE_STORE,
+                $scopeID
+            );
+
+        } catch (\Exception $e) {
+
+            $this->clerk_logger->error('getPublicKey ERROR', ['error' => $e->getMessage()]);
+
+        }
+    }
+
+    /**
+     * Get private website key
+     *
+     * @return string
+     */
+    private function getPrivateDefaultKey($scopeID)
+    {
+        try {
+
+            return $this->scopeConfig->getValue(
+                Config::XML_PATH_PRIVATE_KEY,
+                ScopeInterface::SCOPE_STORE,
+                $scopeID
+            );
+
+        } catch (\Exception $e) {
+
+            $this->clerk_logger->error('getPrivateKey ERROR', ['error' => $e->getMessage()]);
+
+        }
+    }
+
 
     /**
      * Get private store key
@@ -336,6 +421,29 @@ abstract class AbstractAction extends Action
         }
     }
 
+    /**
+     * Timing safe key comparison
+     *
+     * @return boolean
+     */
+    private function timingSafeEquals($safe, $user)
+    {
+        $safeLen = strlen($safe);
+        $userLen = strlen($user);
+
+        if ($userLen != $safeLen) {
+            return false;
+        }
+
+        $result = 0;
+
+        for ($i = 0; $i < $userLen; $i++) {
+            $result |= (ord($safe[$i]) ^ ord($user[$i]));
+        }
+
+        // They are only identical strings if $result is exactly 0...
+        return $result === 0;
+    }
 
     /**
      * Parse request arguments
@@ -345,8 +453,8 @@ abstract class AbstractAction extends Action
         try {
 
             $this->debug = (bool)$request->getParam('debug', false);
-            $this->start_date = date('Y-m-d',$request->getParam('start_date', strtotime('today - 200 years')));
-            $this->end_date = date('Y-m-d',$request->getParam('end_date', strtotime('today + 1 day')));
+            $this->start_date = date('Y-m-d', $request->getParam('start_date', strtotime('today - 200 years')));
+            $this->end_date = date('Y-m-d', $request->getParam('end_date', strtotime('today + 1 day')));
             $this->limit = (int)$request->getParam('limit', 0);
             $this->page = (int)$request->getParam('page', 0);
             $this->orderBy = $request->getParam('orderby', 'entity_id');
@@ -473,11 +581,11 @@ abstract class AbstractAction extends Action
 
             $collection->addFieldToSelect('*');
 
-            if($this->start_date) {
+            if ($this->start_date) {
 
                 $collection->setPageSize($this->limit)
                     ->setCurPage($this->page)
-                    ->addAttributeToFilter('created_at', array('from'=>$this->start_date, 'to'=>$this->end_date))
+                    ->addAttributeToFilter('created_at', ['from'=>$this->start_date, 'to'=>$this->end_date])
                     ->addOrder($this->orderBy, $this->order);
             } else {
 
@@ -545,7 +653,7 @@ abstract class AbstractAction extends Action
 
     public function getWebsites()
     {
-        $websiteIds = array();
+        $websiteIds = [];
         foreach ($this->_storeManager->getWebsites() as $website) {
             $websiteId = $website["website_id"];
             array_push($websiteIds, $websiteId);

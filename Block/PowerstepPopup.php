@@ -37,6 +37,7 @@ class PowerstepPopup extends Template
      */
     protected $imageHelper;
 
+
     /**
      * PowerstepPopup constructor.
      *
@@ -51,14 +52,13 @@ class PowerstepPopup extends Template
         ProductRepositoryInterface $productRepository,
         Cart $cartHelper,
         Image $imageHelper,
-        array $data = [])
-    {
+        array $data = []
+    ) {
         parent::__construct($context, $data);
         $this->checkoutSession = $checkoutSession;
         $this->productRepository = $productRepository;
         $this->cartHelper = $cartHelper;
         $this->imageHelper = $imageHelper;
-
         $this->setTemplate('powerstep_popup.phtml');
     }
 
@@ -128,7 +128,7 @@ class PowerstepPopup extends Template
     {
         $showPowerstep = ($this->getRequest()->getParam('isAjax')) || ($this->checkoutSession->getClerkShowPowerstep(true));
 
-        if($showPowerstep){
+        if ($showPowerstep) {
             $this->checkoutSession->setClerkShowPowerstep(false);
         }
 
@@ -147,7 +147,16 @@ class PowerstepPopup extends Template
 
     public function getExcludeState()
     {
-        return $this->_scopeConfig->getValue(Config::XML_PATH_POWERSTEP_FILTER_DUPLICATES, ScopeInterface::SCOPE_STORE);
+
+        if ($this->_scopeConfig->getValue('general/single_store_mode/enabled') == 1) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
+
+        return $this->_scopeConfig->getValue(Config::XML_PATH_POWERSTEP_FILTER_DUPLICATES, $scope, $scope_id);
     }
 
     /**
@@ -157,19 +166,33 @@ class PowerstepPopup extends Template
      */
     public function getTemplates()
     {
-        $configTemplates = $this->_scopeConfig->getValue(Config::XML_PATH_POWERSTEP_TEMPLATES, ScopeInterface::SCOPE_STORE);
-        $templates = explode(',', $configTemplates);
 
-        foreach ($templates as $key => $template) {
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
 
-            $templates[$key] = str_replace(' ','', $template);
+        $template_contents = $this->_scopeConfig->getValue(Config::XML_PATH_POWERSTEP_TEMPLATES, $scope, $scope_id);
+        if ($template_contents) {
+            $template_contents = explode(',', $template_contents);
+        } else {
+            $template_contents = [0 => ''];
+        }
+
+        foreach ($template_contents as $key => $template) {
+
+            $templates[$key] = str_replace(' ', '', $template);
 
         }
 
         return (array) $templates;
     }
 
-    public function generateRandomString($length = 25) {
+    public function generateRandomString($length = 25)
+    {
 
         $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
         $charactersLength = strlen($characters);
@@ -180,6 +203,5 @@ class PowerstepPopup extends Template
         }
 
         return $randomString;
-
     }
 }

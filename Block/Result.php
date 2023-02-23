@@ -8,6 +8,7 @@ use Magento\Store\Model\ScopeInterface;
 
 class Result extends BaseResult
 {
+
     const TARGET_ID = 'clerk-search-results';
 
     /**
@@ -27,7 +28,16 @@ class Result extends BaseResult
      */
     public function getSearchTemplate()
     {
-        return $this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_TEMPLATE, ScopeInterface::SCOPE_STORE);
+
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
+
+        return $this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_TEMPLATE, $scope, $scope_id);
     }
 
     /**
@@ -37,38 +47,92 @@ class Result extends BaseResult
      */
     public function getFacetsDesign()
     {
-        return $this->_scopeConfig->getValue(Config::XML_PATH_FACETED_SEARCH_DESIGN, ScopeInterface::SCOPE_STORE);
+
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
+
+        return $this->_scopeConfig->getValue(Config::XML_PATH_FACETED_SEARCH_DESIGN, $scope, $scope_id);
     }
 
     /**
      * Determine if we should include categories and pages in search results
-     * 
+     *
      * @return bool
-     * 
+     *
      */
 
     public function shouldIncludeCategories()
     {
-        return ($this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_INCLUDE_CATEGORIES, ScopeInterface::SCOPE_STORE)) ? 'true' : 'false';
+
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
+
+        return ($this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_INCLUDE_CATEGORIES, $scope, $scope_id)) ? 'true' : 'false';
     }
     public function getSuggestions()
     {
-        return $this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_SUGGESTIONS, ScopeInterface::SCOPE_STORE);
+
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
+
+        return $this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_SUGGESTIONS, $scope, $scope_id);
     }
 
     public function getCategories()
     {
-        return $this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_CATEGORIES, ScopeInterface::SCOPE_STORE);
+
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
+
+        return $this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_CATEGORIES, $scope, $scope_id);
     }
 
     public function getPages()
     {
-        return $this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_PAGES, ScopeInterface::SCOPE_STORE);
+
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
+
+        return $this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_PAGES, $scope, $scope_id);
     }
 
     public function getPagesType()
     {
-        return $this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_PAGES_TYPE, ScopeInterface::SCOPE_STORE);
+
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
+
+        return $this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_PAGES_TYPE, $scope, $scope_id);
     }
 
 
@@ -80,6 +144,14 @@ class Result extends BaseResult
     public function getSpanAttributes()
     {
         $output = '';
+
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
 
         $spanAttributes = [
             'id' => 'clerk-search',
@@ -98,27 +170,27 @@ class Result extends BaseResult
         }
 
 
-        if ($this->_scopeConfig->isSetFlag(Config::XML_PATH_FACETED_SEARCH_ENABLED, ScopeInterface::SCOPE_STORE)) {
+        if ($this->_scopeConfig->isSetFlag(Config::XML_PATH_FACETED_SEARCH_ENABLED, $scope, $scope_id)) {
             try {
                 $spanAttributes['data-facets-target'] = "#clerk-search-filters";
                 $spanAttributes['data-facets-design'] =  $this->getFacetsDesign();
 
-                if ($titles = $this->_scopeConfig->getValue(Config::XML_PATH_FACETED_SEARCH_TITLES, ScopeInterface::SCOPE_STORE)) {
+                if ($titles = $this->_scopeConfig->getValue(Config::XML_PATH_FACETED_SEARCH_TITLES, $scope, $scope_id)) {
                     $titles = json_decode($titles, true);
 
-                    // sort alphabetically by name
-                    uasort($titles, function($a, $b) {
-                        if (isset($a['sort_order']) && isset($b['sort_order'])) {
-                            return $a['sort_order'] > $b['sort_order'];
+                    $titles_sorting = [];
+                    foreach ($titles as $k => $v) {
+                        if (array_key_exists('sort_order', $v)) {
+                            $titles_sorting[$k] = $v['sort_order'];
                         }
+                    }
 
-                        return true;
-                    });
+                    asort($titles_sorting);
 
                     $spanAttributes['data-facets-titles'] = json_encode(array_filter(array_combine(array_keys($titles), array_column($titles, 'label'))));
-                    $spanAttributes['data-facets-attributes'] = json_encode(array_keys($titles));
+                    $spanAttributes['data-facets-attributes'] = json_encode(array_keys($titles_sorting));
 
-                    if ($multiselectAttributes = $this->_scopeConfig->getValue(Config::XML_PATH_FACETED_SEARCH_MULTISELECT_ATTRIBUTES, ScopeInterface::SCOPE_STORE)) {
+                    if ($multiselectAttributes = $this->_scopeConfig->getValue(Config::XML_PATH_FACETED_SEARCH_MULTISELECT_ATTRIBUTES, $scope, $scope_id)) {
                         $spanAttributes['data-facets-multiselect-attributes'] = '["' . str_replace(',', '","', $multiselectAttributes) . '"]';
                     }
                 }
@@ -151,7 +223,16 @@ class Result extends BaseResult
      */
     public function getNoResultsText()
     {
-        return $this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_NO_RESULTS_TEXT, ScopeInterface::SCOPE_STORE);
+
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
+
+        return $this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_NO_RESULTS_TEXT, $scope, $scope_id);
     }
 
     /**
@@ -161,6 +242,15 @@ class Result extends BaseResult
      */
     public function getLoadMoreText()
     {
-        return $this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_LOAD_MORE_TEXT, ScopeInterface::SCOPE_STORE);
+
+        if ($this->_storeManager->isSingleStoreMode()) {
+            $scope = 'default';
+            $scope_id = '0';
+        } else {
+            $scope = ScopeInterface::SCOPE_STORE;
+            $scope_id = $this->_storeManager->getStore()->getId();
+        }
+
+        return $this->_scopeConfig->getValue(Config::XML_PATH_SEARCH_LOAD_MORE_TEXT, $scope, $scope_id);
     }
 }

@@ -81,7 +81,6 @@ class ClerkLogger
         $this->Enabled = $this->scopeConfig->getValue(Config::XML_PATH_LOG_ENABLED, ScopeInterface::SCOPE_STORE);
         $this->moduleList = $moduleList;
         $this->InitializeSearchPowerstep();
-
     }
 
     /**
@@ -282,7 +281,6 @@ class ClerkLogger
 
             }
         }
-
     }
 
     /**
@@ -296,11 +294,11 @@ class ClerkLogger
         $productMetadata = $objectManager->get('Magento\Framework\App\ProductMetadataInterface');
         $version = $productMetadata->getVersion();
         header('User-Agent: ClerkExtensionBot Magento 2/v' . $version . ' clerk/v' . $this->moduleList->getOne('Clerk_Clerk')['setup_version'] . ' PHP/v' . phpversion());
-        if(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI']))
+        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI'])) {
 
             $Metadata['uri'] = "https://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
 
-        elseif (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI'])) {
+        } elseif (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI'])) {
 
             $Metadata['uri'] = "http://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
 
@@ -310,7 +308,7 @@ class ClerkLogger
 
             $Metadata['params'] = $_GET;
 
-        }elseif ($_POST) {
+        } elseif ($_POST) {
 
             $Metadata['params'] = $_POST;
 
@@ -350,7 +348,7 @@ class ClerkLogger
 
                     if ($response->status == 'error') {
 
-                        $this->LogToFile($Message,$Metadata);
+                        $this->LogToFile($Message, $Metadata);
 
                     }
 
@@ -358,12 +356,11 @@ class ClerkLogger
 
                 } elseif ($this->Log_to == 'file') {
 
-                    $this->LogToFile($Message,$Metadata);
+                    $this->LogToFile($Message, $Metadata);
 
                 }
             }
         }
-
     }
 
     /**
@@ -377,11 +374,11 @@ class ClerkLogger
         $productMetadata = $objectManager->get('Magento\Framework\App\ProductMetadataInterface');
         $version = $productMetadata->getVersion();
         header('User-Agent: ClerkExtensionBot Magento 2/v' . $version . ' clerk/v' . $this->moduleList->getOne('Clerk_Clerk')['setup_version'] . ' PHP/v' . phpversion());
-        if(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI']))
+        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI'])) {
 
             $Metadata['uri'] = "https://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
 
-        elseif (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI'])) {
+        } elseif (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI'])) {
 
             $Metadata['uri'] = "http://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
 
@@ -391,7 +388,7 @@ class ClerkLogger
 
             $Metadata['params'] = $_GET;
 
-        }elseif ($_POST) {
+        } elseif ($_POST) {
 
             $Metadata['params'] = $_POST;
 
@@ -428,7 +425,7 @@ class ClerkLogger
 
                 if ($response->status == 'error') {
 
-                    $this->LogToFile($Message,$Metadata);
+                    $this->LogToFile($Message, $Metadata);
 
                 }
 
@@ -436,11 +433,10 @@ class ClerkLogger
 
             } elseif ($this->Log_to == 'file') {
 
-                $this->LogToFile($Message,$Metadata);
+                $this->LogToFile($Message, $Metadata);
 
             }
         }
-
     }
 
     /**
@@ -454,11 +450,11 @@ class ClerkLogger
         $productMetadata = $objectManager->get('Magento\Framework\App\ProductMetadataInterface');
         $version = $productMetadata->getVersion();
         header('User-Agent: ClerkExtensionBot Magento 2/v' . $version . ' clerk/v' . $this->moduleList->getOne('Clerk_Clerk')['setup_version'] . ' PHP/v' . phpversion());
-        if(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI']))
+        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI'])) {
 
             $Metadata['uri'] = "https://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
 
-        elseif (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI'])) {
+        } elseif (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI'])) {
 
             $Metadata['uri'] = "http://".$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'];
 
@@ -468,7 +464,7 @@ class ClerkLogger
 
             $Metadata['params'] = $_GET;
 
-        }elseif ($_POST) {
+        } elseif ($_POST) {
 
             $Metadata['params'] = $_POST;
 
@@ -510,7 +506,7 @@ class ClerkLogger
 
                     if ($response->status == 'error') {
 
-                        $this->LogToFile($Message,$Metadata);
+                        $this->LogToFile($Message, $Metadata);
 
                     }
 
@@ -518,14 +514,15 @@ class ClerkLogger
 
                 } elseif ($this->Log_to == 'file') {
 
-                    $this->LogToFile($Message,$Metadata);
+                    $this->LogToFile($Message, $Metadata);
 
                 }
             }
         }
     }
 
-    public function LogToFile($Message,$Metadata) {
+    public function LogToFile($Message, $Metadata)
+    {
 
         $log = $this->Date->format('Y-m-d H:i:s') . ' MESSAGE: ' . $Message . ' METADATA: ' . json_encode($Metadata) . PHP_EOL .
             '-------------------------' . PHP_EOL;
@@ -533,6 +530,5 @@ class ClerkLogger
 
         fopen($path, "a+");
         file_put_contents($path, $log, FILE_APPEND);
-
     }
 }

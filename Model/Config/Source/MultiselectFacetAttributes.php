@@ -14,9 +14,17 @@ class MultiselectFacetAttributes implements ArrayInterface
      */
     protected $scopeConfig;
 
-    public function __construct(ScopeConfigInterface $scopeConfig)
-    {
+    /**
+     * @var RequestInterface
+     */
+    protected $requestInterface;
+
+    public function __construct(
+        ScopeConfigInterface $scopeConfig,
+        \Magento\Framework\App\RequestInterface $requestInterface
+    ) {
         $this->scopeConfig = $scopeConfig;
+        $this->requestInterface = $requestInterface;
     }
 
     /**
@@ -43,17 +51,17 @@ class MultiselectFacetAttributes implements ArrayInterface
     public function toArray()
     {
         $attributes = $this->getConfiguredAttributes();
-	
-	$attributes_defined = is_null($attributes) ? false : true;
 
-	if(!$attributes_defined){
-		return [];
-	}
+        $attributes_defined = is_null($attributes) ? false : true;
+
+        if (!$attributes_defined) {
+            return [];
+        }
 
         $values = [];
 
         foreach (explode(',', $attributes) as $attribute) {
-            $values[$attribute] = str_replace(' ','', $attribute);
+            $values[$attribute] = str_replace(' ', '', $attribute);
         }
 
         return $values;
@@ -64,7 +72,17 @@ class MultiselectFacetAttributes implements ArrayInterface
      */
     private function getConfiguredAttributes()
     {
-	    setcookie('stubbe', ScopeInterface::SCOPE_STORE, 86400);
-        return $this->scopeConfig->getValue(Config::XML_PATH_FACETED_SEARCH_ATTRIBUTES, ScopeInterface::SCOPE_STORE);
+        $_params = $this->requestInterface->getParams();
+        $scope_id = '0';
+        $scope = 'default';
+        if (array_key_exists('website', $_params)) {
+            $scope = 'website';
+            $scope_id = $_params[$scope];
+        }
+        if (array_key_exists('store', $_params)) {
+            $scope = 'store';
+            $scope_id = $_params[$scope];
+        }
+        return $this->scopeConfig->getValue(Config::XML_PATH_FACETED_SEARCH_ATTRIBUTES, $scope, $scope_id);
     }
 }
