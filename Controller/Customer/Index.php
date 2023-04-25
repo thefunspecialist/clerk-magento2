@@ -12,13 +12,30 @@ use Magento\Customer\Model\ResourceModel\Customer\CollectionFactory;
 use Magento\Framework\Module\ModuleList;
 use Psr\Log\LoggerInterface;
 use Magento\Customer\Api\CustomerMetadataInterface;
+use Magento\Framework\Webapi\Rest\Request as RequestApi;
+use Magento\Framework\App\ProductMetadataInterface;
 
 class Index extends AbstractAction
 {
-
+    /**
+     * @var CollectionFactory
+     */
     protected $collectionFactory;
+
+    /**
+     * @var ClerkLogger
+     */
     protected $clerk_logger;
+
+    /**
+     * @var CustomerMetadataInterface
+     */
     protected $_customerMetadata;
+
+    /**
+     * @var ProductMetadataInterface
+     */
+    protected $_product_metadata;
 
     /**
      * @var string
@@ -31,15 +48,37 @@ class Index extends AbstractAction
      * @param Context $context
      * @param ScopeConfigInterface $scopeConfig
      * @param CollectionFactory $customerCollectionFactory
+     * @param ProductMetadataInterface $product_metadata
+     * @param RequestApi $request_api
      */
-    public function __construct(Context $context, StoreManagerInterface $storeManager, ScopeConfigInterface $scopeConfig, CollectionFactory $customerCollectionFactory, LoggerInterface $logger, ModuleList $moduleList, ClerkLogger $ClerkLogger, CustomerMetadataInterface $customerMetadata)
+    public function __construct(
+        Context $context,
+        StoreManagerInterface $storeManager,
+        ScopeConfigInterface $scopeConfig,
+        CollectionFactory $customerCollectionFactory,
+        LoggerInterface $logger,
+        ModuleList $moduleList,
+        ClerkLogger $clerk_logger,
+        CustomerMetadataInterface $customerMetadata,
+        ProductMetadataInterface $product_metadata,
+        RequestApi $request_api
+        )
     {
         $this->collectionFactory = $customerCollectionFactory;
-        $this->clerk_logger = $ClerkLogger;
+        $this->clerk_logger = $clerk_logger;
         $this->_customerMetadata = $customerMetadata;
         $this->_storeManager = $storeManager;
 
-        parent::__construct($context, $storeManager, $scopeConfig, $logger, $moduleList, $ClerkLogger);
+        parent::__construct(
+            $context,
+            $storeManager,
+            $scopeConfig,
+            $logger,
+            $moduleList,
+            $clerk_logger,
+            $product_metadata,
+            $request_api
+        );
     }
 
     public function execute()
