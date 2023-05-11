@@ -82,9 +82,9 @@ class Product extends AbstractAdapter
 
     protected $productRepository;
 
-    protected $reviewFactory;
+    // protected $reviewFactory;
 
-    protected $reviewSummaryRepository;
+    // protected $reviewSummaryRepository;
     /**
      * Product constructor.
      *
@@ -108,8 +108,8 @@ class Product extends AbstractAdapter
         ProductMetadataInterface $ProductMetadataInterface,
         ProductRepository $productRepository,
         \Magento\Framework\App\RequestInterface $requestInterface,
-        \Magento\Review\Model\ReviewFactory $reviewFactory,
-        \Magento\Review\Model\ReviewSummaryRepository $reviewSummaryRepository,
+        // \Magento\Review\Model\ReviewFactory $reviewFactory,
+        // \Magento\Review\Model\ReviewSummaryRepository $reviewSummaryRepository,
     ) {
         $this->taxHelper = $taxHelper;
         $this->_stockFilter = $stockFilter;
@@ -120,8 +120,8 @@ class Product extends AbstractAdapter
         $this->ProductMetadataInterface = $ProductMetadataInterface;
         $this->productRepository = $productRepository;
         $this->requestInterface = $requestInterface;
-        $this->reviewFactory = $reviewFactory;
-        $this->reviewSummaryRepository = $reviewSummaryRepository;
+        // $this->reviewFactory = $reviewFactory;
+        // $this->reviewSummaryRepository = $reviewSummaryRepository;
         parent::__construct(
             $scopeConfig,
             $eventManager,
@@ -372,16 +372,16 @@ class Product extends AbstractAdapter
                 return $holderArray;
             });
 
-            $this->addFieldHandler('aggregate_rating', function ($item) {
-                $reviewSummary = $this->reviewSummaryRepository->get($item->getId(), $this->storeManager->getStore()->getId());
-                return $reviewSummary->getRatingSummary() ? $reviewSummary->getRatingSummary() / 20 : 0;
-            });
+            // $this->addFieldHandler('aggregate_rating', function ($item) {
+            //     $reviewSummary = $this->reviewSummaryRepository->get($item->getId(), $this->storeManager->getStore()->getId());
+            //     return $reviewSummary->getRatingSummary() ? $reviewSummary->getRatingSummary() / 20 : 0;
+            // });
             
-            $this->addFieldHandler('number_of_reviews', function ($item) {
-                $review = $this->reviewFactory->create();
-                $review->getEntitySummary($item, $this->storeManager->getStore()->getId());
-                return (int) $item->getRatingSummary()->getReviewsCount();
-            });
+            // $this->addFieldHandler('number_of_reviews', function ($item) {
+            //     $review = $this->reviewFactory->create();
+            //     $review->getEntitySummary($item, $this->storeManager->getStore()->getId());
+            //     return (int) $item->getRatingSummary()->getReviewsCount();
+            // });
 
             //Add image fieldhandler
             $this->addFieldHandler('image', function ($item) {
@@ -606,9 +606,7 @@ class Product extends AbstractAdapter
             'product_type',
             'tier_price_values',
             'tier_price_quantities',
-            'child_stocks',
-            'aggregate_rating', 
-            'number_of_reviews' 
+            'child_stocks'
             ];
 
             $additionalFields = $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_ADDITIONAL_FIELDS, $scope, $scopeid);
