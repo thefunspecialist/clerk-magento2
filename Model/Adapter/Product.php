@@ -84,7 +84,7 @@ class Product extends AbstractAdapter
 
     protected $reviewFactory;
 
-    protected $reviewSummaryFactory;
+    protected $reviewSummaryRepository;
     /**
      * Product constructor.
      *
@@ -109,7 +109,7 @@ class Product extends AbstractAdapter
         ProductRepository $productRepository,
         \Magento\Framework\App\RequestInterface $requestInterface,
         \Magento\Review\Model\ReviewFactory $reviewFactory,
-        \Magento\Review\Model\ReviewSummaryFactory $reviewSummaryFactory,
+        \Magento\Review\Model\ReviewSummaryRepository $reviewSummaryRepository,
     ) {
         $this->taxHelper = $taxHelper;
         $this->_stockFilter = $stockFilter;
@@ -121,7 +121,7 @@ class Product extends AbstractAdapter
         $this->productRepository = $productRepository;
         $this->requestInterface = $requestInterface;
         $this->reviewFactory = $reviewFactory;
-        $this->reviewSummaryFactory = $reviewSummaryFactory;
+        $this->reviewSummaryRepository = $reviewSummaryRepository;
         parent::__construct(
             $scopeConfig,
             $eventManager,
@@ -373,8 +373,7 @@ class Product extends AbstractAdapter
             });
 
             $this->addFieldHandler('aggregate_rating', function ($item) {
-                $reviewSummary = $this->reviewSummaryFactory->create();
-                $reviewSummary->load($item->getId(), $this->storeManager->getStore()->getId());
+                $reviewSummary = $this->reviewSummaryRepository->get($item->getId(), $this->storeManager->getStore()->getId());
                 return $reviewSummary->getRatingSummary() ? $reviewSummary->getRatingSummary() / 20 : 0;
             });
             
