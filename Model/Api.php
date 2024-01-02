@@ -175,7 +175,7 @@ class Api
             $curl = curl_init($url);
             curl_setopt($curl, CURLOPT_POST, true);
             if (!empty($params)) {
-                curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($params));
+                curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($params, true));
             }
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
             $response = curl_exec($curl);
@@ -328,6 +328,40 @@ class Api
         }
     }
 
+    /**
+     * Validate token with Clerk
+     *
+     * @param string $token_string
+     * @param string $publicKey
+     * @throws \Exception
+     * @return array
+     */
+    public function verifyToken($token_string = null, $publicKey = null)
+    {
+        if (!$token_string || !$publicKey) {
+            return false;
+        }
+
+        try {
+            $query_params = array(
+                'token' => $token_string,
+                'key' => $publicKey,
+            );
+
+            $url = $this->baseurl . 'token/verify';
+            $response = $this->_curl_get($url, $query_params);
+
+            $decodedResponse = json_decode($response, true);
+
+            return (array) $decodedResponse;
+
+        } catch (\Exception $e) {
+
+            $this->logger->error(' Communicator "postTokenVerification"', ['error' => $e->getMessage()]);
+
+        }
+    }
+
     public function getParametersForEndpoint($endpoint)
     {
         $endpointMap = [
@@ -397,10 +431,11 @@ class Api
                 'limit',
                 'category'
             ],
-            'recommendations/category/popular_subcategories' => [
+            'recommendations/category/complementary' => [
                 'limit',
                 'category'
             ],
+
             'recommendations/visitor/history' => [
                 'limit',
             ],

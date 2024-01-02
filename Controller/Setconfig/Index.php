@@ -2,6 +2,7 @@
 
 namespace Clerk\Clerk\Controller\Setconfig;
 
+use Clerk\Clerk\Model\Api;
 use Clerk\Clerk\Controller\AbstractAction;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\Config\ScopeConfigInterface;
@@ -63,6 +64,7 @@ class Index extends AbstractAction
      * @param ProductMetadataInterface $product_metadata
      * @param CacheType $cacheType
      * @param RequestApi $request_api
+     * @param Api $api
      */
     public function __construct(
         Context $context,
@@ -74,20 +76,22 @@ class Index extends AbstractAction
         WriterInterface $configWriter,
         ProductMetadataInterface $product_metadata,
         CacheType $cacheType,
-        RequestApi $request_api
+        RequestApi $request_api,
+        Api $api
     ) {
         $this->clerk_logger = $clerk_logger;
         $this->config_writer = $configWriter;
         $this->_cacheType = $cacheType;
         parent::__construct(
-            $context, 
-            $storeManager, 
-            $ScopeConfigInterface, 
-            $logger, 
-            $moduleList, 
+            $context,
+            $storeManager,
+            $ScopeConfigInterface,
+            $logger,
+            $moduleList,
             $clerk_logger,
             $product_metadata,
-            $request_api
+            $request_api,
+            $api
         );
     }
 
@@ -141,6 +145,10 @@ class Index extends AbstractAction
                         $this->config_writer->save(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_ADDITIONAL_FIELDS, $value, $scope, $scopeId);
                         $count++;
                     }
+                    if ($key == "PRODUCT_SYNCHRONIZATION_ADDITIONAL_FIELDS_HEAVY_QUERY") {
+                        $this->config_writer->save(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_ADDITIONAL_FIELDS_HEAVY_QUERY, $value, $scope, $scopeId);
+                        $count++;
+                    }
                     if ($key == "PRODUCT_SYNCHRONIZATION_SALABLE_ONLY") {
                         $this->config_writer->save(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_SALABLE_ONLY, $value, $scope, $scopeId);
                         $count++;
@@ -159,7 +167,10 @@ class Index extends AbstractAction
                     }
 
                     //customer
-
+                    if ($key == "SUBSCRIBER_SYNCHRONIZATION_ENABLED") {
+                        $this->config_writer->save(Config::XML_PATH_SUBSCRIBER_SYNCHRONIZATION_ENABLED, $value, $scope, $scopeId);
+                        $count++;
+                    }
                     if ($key == "CUSTOMER_SYNCHRONIZATION_ENABLED") {
                         $this->config_writer->save(Config::XML_PATH_CUSTOMER_SYNCHRONIZATION_ENABLED, $value, $scope, $scopeId);
                         $count++;
@@ -345,7 +356,7 @@ class Index extends AbstractAction
                         $count++;
                     }
 
-                   // log
+                    // log
 
                     if ($key == "LOG_LEVEL") {
                         $this->config_writer->save(Config::XML_PATH_LOG_LEVEL, $value, $scope, $scopeId);
@@ -362,7 +373,7 @@ class Index extends AbstractAction
 
                 } // foreach
 
-                if ($count !=0) {
+                if ($count != 0) {
                     $this->_cacheType->cleanType('config');
                 }
             } // if post

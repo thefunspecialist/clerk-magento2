@@ -2,6 +2,7 @@
 
 namespace Clerk\Clerk\Controller\Getconfig;
 
+use Clerk\Clerk\Model\Api;
 use Clerk\Clerk\Controller\AbstractAction;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\Config\ScopeConfigInterface;
@@ -40,6 +41,7 @@ class Index extends AbstractAction
      * @param ModuleList $moduleList
      * @param ProductMetadataInterface $product_metadata
      * @param RequestApi $request_api
+     * @param Api $api
      */
     public function __construct(
         Context $context,
@@ -49,9 +51,9 @@ class Index extends AbstractAction
         StoreManagerInterface $storeManager,
         ClerkLogger $clerk_logger,
         ProductMetadataInterface $product_metadata,
-        RequestApi $request_api
-        )
-    {
+        RequestApi $request_api,
+        Api $api
+    ) {
         $this->moduleList = $moduleList;
         $this->clerk_logger = $clerk_logger;
         $this->store_manager = $storeManager;
@@ -63,7 +65,8 @@ class Index extends AbstractAction
             $moduleList,
             $clerk_logger,
             $product_metadata,
-            $request_api
+            $request_api,
+            $api
         );
     }
 
@@ -109,12 +112,14 @@ class Index extends AbstractAction
                 'PRODUCT_SYNCHRONIZATION_COLLECT_EMAILS' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_COLLECT_EMAILS, $scope, $scopeID),
                 'PRODUCT_SYNCHRONIZATION_COLLECT_BASKETS' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_COLLECT_BASKETS, $scope, $scopeID),
                 'PRODUCT_SYNCHRONIZATION_ADDITIONAL_FIELDS' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_ADDITIONAL_FIELDS, $scope, $scopeID),
+                'PRODUCT_SYNCHRONIZATION_ADDITIONAL_FIELDS_HEAVY_QUERY' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_ADDITIONAL_FIELDS_HEAVY_QUERY, $scope, $scopeID),
                 'PRODUCT_SYNCHRONIZATION_SALABLE_ONLY' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_SALABLE_ONLY, $scope, $scopeID),
                 'PRODUCT_SYNCHRONIZATION_VISIBILITY' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_VISIBILITY, $scope, $scopeID),
                 'PRODUCT_SYNCHRONIZATION_DISABLE_ORDER_SYNCHRONIZATION' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_DISABLE_ORDER_SYNCHRONIZATION, $scope, $scopeID),
                 'PRODUCT_SYNCHRONIZATION_ENABLE_ORDER_RETURN_SYNCHRONIZATION' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_ENABLE_ORDER_RETURN_SYNCHRONIZATION, $scope, $scopeID),
                 'PRODUCT_SYNCHRONIZATION_IMAGE_TYPE' => $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_IMAGE_TYPE, $scope, $scopeID),
 
+                'SUBSCRIBER_SYNCHRONIZATION_ENABLED' => $this->scopeConfig->getValue(Config::XML_PATH_SUBSCRIBER_SYNCHRONIZATION_ENABLED, $scope, $scopeID),
                 'CUSTOMER_SYNCHRONIZATION_ENABLED' => $this->scopeConfig->getValue(Config::XML_PATH_CUSTOMER_SYNCHRONIZATION_ENABLED, $scope, $scopeID),
                 'CUSTOMER_SYNCHRONIZATION_EXTRA_ATTRIBUTES' => $this->scopeConfig->getValue(Config::XML_PATH_CUSTOMER_SYNCHRONIZATION_EXTRA_ATTRIBUTES, $scope, $scopeID),
 
