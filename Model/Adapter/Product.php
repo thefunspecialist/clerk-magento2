@@ -187,6 +187,20 @@ class Product extends AbstractAdapter
 
       $collection->addFieldToSelect('*');
       $collection->addStoreFilter($scopeid);
+
+      // Add stock status filter
+      $collection->joinField(
+        'stock_status',
+        'cataloginventory_stock_status',
+        'stock_status',
+        'product_id=entity_id',
+        ['stock_status' => 1]
+      );
+
+      $collection->addAttributeToFilter([
+        ['attribute' => 'name', 'nlike' => '%FORBIDDEN%']
+      ]);
+
       $productMetadata = $this->productMetadataInterface;
       $version = $productMetadata->getVersion();
 
@@ -196,31 +210,28 @@ class Product extends AbstractAdapter
         if ($this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_SALABLE_ONLY, $scope, $scopeid)) {
           $this->stockFilter->addInStockFilterToCollection($collection);
         }
-
-
       } else {
 
         if (!$this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_SALABLE_ONLY, $scope, $scopeid)) {
           $collection->setFlag('has_stock_status_filter', true);
         }
-
       }
 
       $visibility = $this->scopeConfig->getValue(Config::XML_PATH_PRODUCT_SYNCHRONIZATION_VISIBILITY, $scope, $scopeid);
 
       switch ($visibility) {
-      case Visibility::VISIBILITY_IN_CATALOG:
-        $collection->setVisibility([Visibility::VISIBILITY_IN_CATALOG]);
-        break;
-      case Visibility::VISIBILITY_IN_SEARCH:
-        $collection->setVisibility([Visibility::VISIBILITY_IN_SEARCH]);
-        break;
-      case Visibility::VISIBILITY_BOTH:
-        $collection->setVisibility([Visibility::VISIBILITY_BOTH]);
-        break;
-      case 'any':
-        $collection->addAttributeToFilter('visibility', ['in' => [Visibility::VISIBILITY_IN_CATALOG, Visibility::VISIBILITY_IN_SEARCH, Visibility::VISIBILITY_BOTH]]);
-        break;
+        case Visibility::VISIBILITY_IN_CATALOG:
+          $collection->setVisibility([Visibility::VISIBILITY_IN_CATALOG]);
+          break;
+        case Visibility::VISIBILITY_IN_SEARCH:
+          $collection->setVisibility([Visibility::VISIBILITY_IN_SEARCH]);
+          break;
+        case Visibility::VISIBILITY_BOTH:
+          $collection->setVisibility([Visibility::VISIBILITY_BOTH]);
+          break;
+        case 'any':
+          $collection->addAttributeToFilter('visibility', ['in' => [Visibility::VISIBILITY_IN_CATALOG, Visibility::VISIBILITY_IN_SEARCH, Visibility::VISIBILITY_BOTH]]);
+          break;
       }
 
       $collection->setPageSize($limit)->setCurPage($page)->addOrder($orderBy, $order);
@@ -231,11 +242,9 @@ class Product extends AbstractAdapter
       ]);
 
       return $collection;
-
     } catch (\Exception $e) {
 
       $this->clerk_logger->error('Prepare Collection Error', ['error' => $e->getMessage()]);
-
     }
   }
 
@@ -252,13 +261,13 @@ class Product extends AbstractAdapter
 
       $attributeResource = $resourceItem->getResource();
 
-      if( ! $attributeResource ) {
+      if (!$attributeResource) {
         return parent::getAttributeValue($resourceItem, $field);
       }
 
       $attribute = $attributeResource->getAttribute($field);
 
-      if ( !is_bool( $attribute ) && is_object( $attribute )  ) {
+      if (!is_bool($attribute) && is_object($attribute)) {
         if ($attribute->usesSource()) {
           $source = $attribute->getSource();
           if ($source) {
@@ -268,11 +277,9 @@ class Product extends AbstractAdapter
       }
 
       return parent::getAttributeValue($resourceItem, $field);
-
     } catch (\Exception $e) {
 
       $this->clerk_logger->error('Getting Attribute Value Error', ['error' => $e->getMessage()]);
-
     }
   }
 
@@ -286,7 +293,7 @@ class Product extends AbstractAdapter
 
       //Add age fieldhandler
       $this->addFieldHandler('age', function ($item) {
-        return floor( ( time() - strtotime( $item->getCreatedAt() ) ) / (60 * 60 * 24) );
+        return floor((time() - strtotime($item->getCreatedAt())) / (60 * 60 * 24));
       });
 
       //Add created_at fieldhandler
@@ -307,7 +314,7 @@ class Product extends AbstractAdapter
       });
 
       $this->addFieldHandler('description', function ($item) {
-        return $this->getAttributeValue($item, 'description') ? str_replace(array("\r", "\n"), ' ', strip_tags( html_entity_decode( $this->getAttributeValue($item, 'description') ) ) ) : '';
+        return $this->getAttributeValue($item, 'description') ? str_replace(array("\r", "\n"), ' ', strip_tags(html_entity_decode($this->getAttributeValue($item, 'description')))) : '';
       });
 
       $this->addFieldhandler('visibility', function ($item) {
@@ -315,8 +322,8 @@ class Product extends AbstractAdapter
       });
 
       $this->addFieldHandler('tax_rate', function ($item) {
-        foreach( $this->productTaxRates as $tax ){
-          if ( array_key_exists( 'tax_calculation_rate_id', $tax ) && $item->getTaxClassId() == $tax['tax_calculation_rate_id'] ){
+        foreach ($this->productTaxRates as $tax) {
+          if (array_key_exists('tax_calculation_rate_id', $tax) && $item->getTaxClassId() == $tax['tax_calculation_rate_id']) {
             return (float) $tax['rate'];
           }
         }
@@ -329,22 +336,22 @@ class Product extends AbstractAdapter
           $productType = $item->getTypeId();
           $productTypeInstance = $item->getTypeInstance();
 
-          if($productType == self::PRODUCT_TYPE_SIMPLE || !in_array($productType, self::PRODUCT_TYPES) ){
-            return $this->formatPrice( $this->getProductTaxPrice($item, $item->getFinalPrice(), true) );
+          if ($productType == self::PRODUCT_TYPE_SIMPLE || !in_array($productType, self::PRODUCT_TYPES)) {
+            return $this->formatPrice($this->getProductTaxPrice($item, $item->getFinalPrice(), true));
           }
-          if($productType == self::PRODUCT_TYPE_GROUPED){
+          if ($productType == self::PRODUCT_TYPE_GROUPED) {
             $associatedProducts = $productTypeInstance->getAssociatedProducts($item);
             $groupedProductPriceTotal = 0;
-            if ( ! empty( $associatedProducts ) ) {
-              foreach ( $associatedProducts as $associatedProduct ) {
+            if (!empty($associatedProducts)) {
+              foreach ($associatedProducts as $associatedProduct) {
                 $associatedProductQuantity = $associatedProduct->getQty();
                 $associatedProductPriceSource = null;
-                if($associatedProduct->getFinalPrice()){
+                if ($associatedProduct->getFinalPrice()) {
                   $associatedProductPriceSource = $associatedProduct->getFinalPrice();
-                }elseif($associatedProduct->getPrice()){
+                } elseif ($associatedProduct->getPrice()) {
                   $associatedProductPriceSource = $associatedProduct->getPrice();
                 }
-                if( isset($associatedProductPriceSource) && $associatedProductQuantity ){
+                if (isset($associatedProductPriceSource) && $associatedProductQuantity) {
                   $groupedProductPriceTotal += $this->formatPrice($this->getProductTaxPrice($associatedProduct, $associatedProductPriceSource, true)) * $associatedProductQuantity;
                 }
               }
@@ -352,23 +359,23 @@ class Product extends AbstractAdapter
             return $groupedProductPriceTotal;
           }
 
-          if($productType == self::PRODUCT_TYPE_BUNDLE){
-            return $this->formatPrice( $item->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue() );
+          if ($productType == self::PRODUCT_TYPE_BUNDLE) {
+            return $this->formatPrice($item->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue());
           }
-          if($productType == self::PRODUCT_TYPE_CONFIGURABLE){
+          if ($productType == self::PRODUCT_TYPE_CONFIGURABLE) {
             $childPrices = array();
             $childProducts = $productTypeInstance->getUsedProducts($item);
-            if( ! empty($childProducts) ){
-              foreach( $childProducts as $childProduct ){
-                if(is_numeric($childProduct->getFinalPrice()) && $childProduct->getFinalPrice() > 0){
+            if (!empty($childProducts)) {
+              foreach ($childProducts as $childProduct) {
+                if (is_numeric($childProduct->getFinalPrice()) && $childProduct->getFinalPrice() > 0) {
                   $childPrices[] = $childProduct->getFinalPrice();
                 }
               }
             }
-            if( ! empty($childPrices) ){
-              return $this->formatPrice( $this->getProductTaxPrice( $item, min($childPrices), true ) );
+            if (!empty($childPrices)) {
+              return $this->formatPrice($this->getProductTaxPrice($item, min($childPrices), true));
             } else {
-              return $this->formatPrice( $this->getProductTaxPrice( $item, $item->getPriceInfo()->getPrice('final_price')->getAmount()->getValue(), true ) );
+              return $this->formatPrice($this->getProductTaxPrice($item, $item->getPriceInfo()->getPrice('final_price')->getAmount()->getValue(), true));
             }
           }
         } catch (\Exception $e) {
@@ -382,22 +389,22 @@ class Product extends AbstractAdapter
           $productType = $item->getTypeId();
           $productTypeInstance = $item->getTypeInstance();
 
-          if($productType == self::PRODUCT_TYPE_SIMPLE || !in_array($productType, self::PRODUCT_TYPES) ){
-            return $this->formatPrice( $this->getProductTaxPrice($item, $item->getFinalPrice(), false) );
+          if ($productType == self::PRODUCT_TYPE_SIMPLE || !in_array($productType, self::PRODUCT_TYPES)) {
+            return $this->formatPrice($this->getProductTaxPrice($item, $item->getFinalPrice(), false));
           }
-          if($productType == self::PRODUCT_TYPE_GROUPED){
+          if ($productType == self::PRODUCT_TYPE_GROUPED) {
             $associatedProducts = $productTypeInstance->getAssociatedProducts($item);
             $groupedProductPriceTotal = 0;
-            if ( ! empty( $associatedProducts ) ) {
-              foreach ( $associatedProducts as $associatedProduct ) {
+            if (!empty($associatedProducts)) {
+              foreach ($associatedProducts as $associatedProduct) {
                 $associatedProductQuantity = $associatedProduct->getQty();
                 $associatedProductPriceSource = null;
-                if($associatedProduct->getFinalPrice()){
+                if ($associatedProduct->getFinalPrice()) {
                   $associatedProductPriceSource = $associatedProduct->getFinalPrice();
-                }elseif($associatedProduct->getPrice()){
+                } elseif ($associatedProduct->getPrice()) {
                   $associatedProductPriceSource = $associatedProduct->getPrice();
                 }
-                if( isset($associatedProductPriceSource) && $associatedProductQuantity ){
+                if (isset($associatedProductPriceSource) && $associatedProductQuantity) {
                   $groupedProductPriceTotal += $this->formatPrice($this->getProductTaxPrice($associatedProduct, $associatedProductPriceSource, false)) * $associatedProductQuantity;
                 }
               }
@@ -405,23 +412,23 @@ class Product extends AbstractAdapter
             return $groupedProductPriceTotal;
           }
 
-          if($productType == self::PRODUCT_TYPE_BUNDLE){
-            return $this->formatPrice( $item->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue() );
+          if ($productType == self::PRODUCT_TYPE_BUNDLE) {
+            return $this->formatPrice($item->getPriceInfo()->getPrice('final_price')->getMinimalPrice()->getValue());
           }
-          if($productType == self::PRODUCT_TYPE_CONFIGURABLE){
+          if ($productType == self::PRODUCT_TYPE_CONFIGURABLE) {
             $childPrices = array();
             $childProducts = $productTypeInstance->getUsedProducts($item);
-            if( ! empty($childProducts) ){
-              foreach( $childProducts as $childProduct ){
-                if(is_numeric($childProduct->getFinalPrice()) && $childProduct->getFinalPrice() > 0){
+            if (!empty($childProducts)) {
+              foreach ($childProducts as $childProduct) {
+                if (is_numeric($childProduct->getFinalPrice()) && $childProduct->getFinalPrice() > 0) {
                   $childPrices[] = $childProduct->getFinalPrice();
                 }
               }
             }
-            if( ! empty($childPrices) ){
-              return $this->formatPrice( $this->getProductTaxPrice( $item, min($childPrices), false ) );
+            if (!empty($childPrices)) {
+              return $this->formatPrice($this->getProductTaxPrice($item, min($childPrices), false));
             } else {
-              return $this->formatPrice( $this->getProductTaxPrice( $item, $item->getPriceInfo()->getPrice('final_price')->getAmount()->getValue(), false ) );
+              return $this->formatPrice($this->getProductTaxPrice($item, $item->getPriceInfo()->getPrice('final_price')->getAmount()->getValue(), false));
             }
           }
         } catch (\Exception $e) {
@@ -436,20 +443,20 @@ class Product extends AbstractAdapter
           $productType = $item->getTypeId();
           $productTypeInstance = $item->getTypeInstance();
 
-          if($productType == self::PRODUCT_TYPE_SIMPLE || !in_array($productType, self::PRODUCT_TYPES) ){
-            return $this->formatPrice( $this->getProductTaxPrice($item, $item->getPrice(), true) );
+          if ($productType == self::PRODUCT_TYPE_SIMPLE || !in_array($productType, self::PRODUCT_TYPES)) {
+            return $this->formatPrice($this->getProductTaxPrice($item, $item->getPrice(), true));
           }
-          if($productType == self::PRODUCT_TYPE_GROUPED){
+          if ($productType == self::PRODUCT_TYPE_GROUPED) {
             $associatedProducts = $productTypeInstance->getAssociatedProducts($item);
             $groupedProductPriceTotal = 0;
-            if ( ! empty( $associatedProducts ) ) {
-              foreach ( $associatedProducts as $associatedProduct ) {
+            if (!empty($associatedProducts)) {
+              foreach ($associatedProducts as $associatedProduct) {
                 $associatedProductQuantity = $associatedProduct->getQty();
                 $associatedProductPriceSource = null;
-                if($associatedProduct->getPrice()){
+                if ($associatedProduct->getPrice()) {
                   $associatedProductPriceSource = $associatedProduct->getPrice();
                 }
-                if( isset($associatedProductPriceSource) && $associatedProductQuantity ){
+                if (isset($associatedProductPriceSource) && $associatedProductQuantity) {
                   $groupedProductPriceTotal += $this->formatPrice($this->getProductTaxPrice($associatedProduct, $associatedProductPriceSource, true)) * $associatedProductQuantity;
                 }
               }
@@ -457,23 +464,23 @@ class Product extends AbstractAdapter
             return $groupedProductPriceTotal;
           }
 
-          if($productType == self::PRODUCT_TYPE_BUNDLE){
-            return $this->formatPrice( $item->getPriceInfo()->getPrice('regular_price')->getMinimalPrice()->getValue() );
+          if ($productType == self::PRODUCT_TYPE_BUNDLE) {
+            return $this->formatPrice($item->getPriceInfo()->getPrice('regular_price')->getMinimalPrice()->getValue());
           }
-          if($productType == self::PRODUCT_TYPE_CONFIGURABLE){
+          if ($productType == self::PRODUCT_TYPE_CONFIGURABLE) {
             $childPrices = array();
             $childProducts = $productTypeInstance->getUsedProducts($item);
-            if( ! empty($childProducts) ){
-              foreach( $childProducts as $childProduct ){
-                if(is_numeric($childProduct->getPrice()) && $childProduct->getPrice() > 0){
+            if (!empty($childProducts)) {
+              foreach ($childProducts as $childProduct) {
+                if (is_numeric($childProduct->getPrice()) && $childProduct->getPrice() > 0) {
                   $childPrices[] = $childProduct->getPrice();
                 }
               }
             }
-            if( ! empty($childPrices) ){
-              return $this->formatPrice( $this->getProductTaxPrice( $item, min($childPrices), true ) );
+            if (!empty($childPrices)) {
+              return $this->formatPrice($this->getProductTaxPrice($item, min($childPrices), true));
             } else {
-              return $this->formatPrice( $this->getProductTaxPrice( $item, $item->getPriceInfo()->getPrice('regular_price')->getAmount()->getValue(), true ) );
+              return $this->formatPrice($this->getProductTaxPrice($item, $item->getPriceInfo()->getPrice('regular_price')->getAmount()->getValue(), true));
             }
           }
         } catch (\Exception $e) {
@@ -487,20 +494,20 @@ class Product extends AbstractAdapter
           $productType = $item->getTypeId();
           $productTypeInstance = $item->getTypeInstance();
 
-          if($productType == self::PRODUCT_TYPE_SIMPLE || !in_array($productType, self::PRODUCT_TYPES) ){
-            return $this->formatPrice( $this->getProductTaxPrice($item, $item->getPrice(), false) );
+          if ($productType == self::PRODUCT_TYPE_SIMPLE || !in_array($productType, self::PRODUCT_TYPES)) {
+            return $this->formatPrice($this->getProductTaxPrice($item, $item->getPrice(), false));
           }
-          if($productType == self::PRODUCT_TYPE_GROUPED){
+          if ($productType == self::PRODUCT_TYPE_GROUPED) {
             $associatedProducts = $productTypeInstance->getAssociatedProducts($item);
             $groupedProductPriceTotal = 0;
-            if ( ! empty( $associatedProducts ) ) {
-              foreach ( $associatedProducts as $associatedProduct ) {
+            if (!empty($associatedProducts)) {
+              foreach ($associatedProducts as $associatedProduct) {
                 $associatedProductQuantity = $associatedProduct->getQty();
                 $associatedProductPriceSource = null;
-                if($associatedProduct->getPrice()){
+                if ($associatedProduct->getPrice()) {
                   $associatedProductPriceSource = $associatedProduct->getPrice();
                 }
-                if( isset($associatedProductPriceSource) && $associatedProductQuantity ){
+                if (isset($associatedProductPriceSource) && $associatedProductQuantity) {
                   $groupedProductPriceTotal += $this->formatPrice($this->getProductTaxPrice($associatedProduct, $associatedProductPriceSource, false)) * $associatedProductQuantity;
                 }
               }
@@ -508,23 +515,23 @@ class Product extends AbstractAdapter
             return $groupedProductPriceTotal;
           }
 
-          if($productType == self::PRODUCT_TYPE_BUNDLE){
-            return $this->formatPrice( $item->getPriceInfo()->getPrice('regular_price')->getMinimalPrice()->getValue() );
+          if ($productType == self::PRODUCT_TYPE_BUNDLE) {
+            return $this->formatPrice($item->getPriceInfo()->getPrice('regular_price')->getMinimalPrice()->getValue());
           }
-          if($productType == self::PRODUCT_TYPE_CONFIGURABLE){
+          if ($productType == self::PRODUCT_TYPE_CONFIGURABLE) {
             $childPrices = array();
             $childProducts = $productTypeInstance->getUsedProducts($item);
-            if( ! empty($childProducts) ){
-              foreach( $childProducts as $childProduct ){
-                if(is_numeric($childProduct->getPrice()) && $childProduct->getPrice() > 0){
+            if (!empty($childProducts)) {
+              foreach ($childProducts as $childProduct) {
+                if (is_numeric($childProduct->getPrice()) && $childProduct->getPrice() > 0) {
                   $childPrices[] = $childProduct->getPrice();
                 }
               }
             }
-            if( ! empty($childPrices) ){
-              return $this->formatPrice( $this->getProductTaxPrice( $item, min($childPrices), false ) );
+            if (!empty($childPrices)) {
+              return $this->formatPrice($this->getProductTaxPrice($item, min($childPrices), false));
             } else {
-              return $this->formatPrice( $this->getProductTaxPrice( $item, $item->getPriceInfo()->getPrice('regular_price')->getAmount()->getValue(), false ) );
+              return $this->formatPrice($this->getProductTaxPrice($item, $item->getPriceInfo()->getPrice('regular_price')->getAmount()->getValue(), false));
             }
           }
         } catch (\Exception $e) {
@@ -535,7 +542,7 @@ class Product extends AbstractAdapter
       $this->addFieldHandler('tier_price_values', function ($item) {
         $tierPriceValues = array();
         $tierPrices = $item->getTierPrice();
-        if( ! empty($tierPrices) ){
+        if (!empty($tierPrices)) {
           foreach ($tierPrices as $tierPrice) {
             if (isset($tierPrice['price'])) {
               $tierPriceValues[] = $this->formatPrice($tierPrice['price']);
@@ -548,7 +555,7 @@ class Product extends AbstractAdapter
       $this->addFieldHandler('tier_price_quantities', function ($item) {
         $tierPriceQuantities = array();
         $tierPrices = $item->getTierPrice();
-        if( ! empty($tierPrices) ){
+        if (!empty($tierPrices)) {
           foreach ($tierPrices as $tierPrice) {
             if (isset($tierPrice['price_qty'])) {
               $tierPriceQuantities[] = (int) $tierPrice['price_qty'];
@@ -578,15 +585,15 @@ class Product extends AbstractAdapter
         $productType = $item->getTypeID();
         $productTypeInstance = $item->getTypeInstance();
         $stockValues = array();
-        if($productType ==  self::PRODUCT_TYPE_CONFIGURABLE){
+        if ($productType ==  self::PRODUCT_TYPE_CONFIGURABLE) {
           $usedProducts = $productTypeInstance->getUsedProducts($item);
-          foreach($usedProducts as $usedProduct){
+          foreach ($usedProducts as $usedProduct) {
             $stockValues[] = $this->getProductStockStateQty($usedProduct);
           }
         }
-        if($productType == self::PRODUCT_TYPE_GROUPED){
+        if ($productType == self::PRODUCT_TYPE_GROUPED) {
           $associatedProducts = $productTypeInstance->getAssociatedProducts($item);
-          foreach($associatedProducts as $associatedProduct){
+          foreach ($associatedProducts as $associatedProduct) {
             $stockValues[] = $this->getProductStockStateQty($associatedProduct);
           }
         }
@@ -597,16 +604,16 @@ class Product extends AbstractAdapter
         $productType = $item->getTypeID();
         $productTypeInstance = $item->getTypeInstance();
         $childPrices = array();
-        if($productType == self::PRODUCT_TYPE_CONFIGURABLE){
+        if ($productType == self::PRODUCT_TYPE_CONFIGURABLE) {
           $usedProducts = $productTypeInstance->getUsedProducts($item);
-          foreach($usedProducts as $usedProduct){
-            $childPrices[] = $this->formatPrice( $this->getProductTaxPrice( $usedProduct, $usedProduct->getFinalPrice(), true ) );
+          foreach ($usedProducts as $usedProduct) {
+            $childPrices[] = $this->formatPrice($this->getProductTaxPrice($usedProduct, $usedProduct->getFinalPrice(), true));
           }
         }
-        if($productType == self::PRODUCT_TYPE_GROUPED){
+        if ($productType == self::PRODUCT_TYPE_GROUPED) {
           $associatedProducts = $productTypeInstance->getAssociatedProducts($item);
-          foreach($associatedProducts as $associatedProduct){
-            $childPrices[] = $this->formatPrice( $this->getProductTaxPrice( $associatedProduct, $associatedProduct->getFinalPrice(), true ) );
+          foreach ($associatedProducts as $associatedProduct) {
+            $childPrices[] = $this->formatPrice($this->getProductTaxPrice($associatedProduct, $associatedProduct->getFinalPrice(), true));
           }
         }
         return $childPrices;
@@ -616,16 +623,16 @@ class Product extends AbstractAdapter
         $productType = $item->getTypeID();
         $productTypeInstance = $item->getTypeInstance();
         $childPrices = array();
-        if($productType == self::PRODUCT_TYPE_CONFIGURABLE){
+        if ($productType == self::PRODUCT_TYPE_CONFIGURABLE) {
           $usedProducts = $productTypeInstance->getUsedProducts($item);
-          foreach($usedProducts as $usedProduct){
-            $childPrices[] = $this->formatPrice( $this->getProductTaxPrice( $usedProduct, $usedProduct->getPrice(), true ) );
+          foreach ($usedProducts as $usedProduct) {
+            $childPrices[] = $this->formatPrice($this->getProductTaxPrice($usedProduct, $usedProduct->getPrice(), true));
           }
         }
-        if($productType == self::PRODUCT_TYPE_GROUPED){
+        if ($productType == self::PRODUCT_TYPE_GROUPED) {
           $associatedProducts = $productTypeInstance->getAssociatedProducts($item);
-          foreach($associatedProducts as $associatedProduct){
-            $childPrices[] = $this->formatPrice( $this->getProductTaxPrice( $associatedProduct, $associatedProduct->getPrice(), true ) );
+          foreach ($associatedProducts as $associatedProduct) {
+            $childPrices[] = $this->formatPrice($this->getProductTaxPrice($associatedProduct, $associatedProduct->getPrice(), true));
           }
         }
         return $childPrices;
@@ -636,31 +643,31 @@ class Product extends AbstractAdapter
         $productType = $item->getTypeID();
         $productTypeInstance = $item->getTypeInstance();
         $childImages = array();
-        if($productType == self::PRODUCT_TYPE_CONFIGURABLE){
-          if($heavyAttributeQuery){
+        if ($productType == self::PRODUCT_TYPE_CONFIGURABLE) {
+          if ($heavyAttributeQuery) {
             $childIdsRaw = $productTypeInstance->getChildrenIds($item->getId());
-            if(!empty($childIdsRaw)){
-              if(isset($childIdsRaw[0]) && is_array($childIdsRaw[0])){
+            if (!empty($childIdsRaw)) {
+              if (isset($childIdsRaw[0]) && is_array($childIdsRaw[0])) {
                 $childIds = $childIdsRaw[0];
               } else {
                 $childIds = $childIdsRaw;
               }
             }
-            foreach($childIds as $childId){
+            foreach ($childIds as $childId) {
               // Emulate product even if disabled
               $childProduct = $this->_productRepository->getById($childId);
               $childImages[] = $this->fixImagePath($this->imageHelper->getUrl($childProduct));
             }
           } else {
             $usedProducts = $productTypeInstance->getUsedProducts($item);
-            foreach($usedProducts as $usedProduct){
+            foreach ($usedProducts as $usedProduct) {
               $childImages[] = $this->fixImagePath($this->imageHelper->getUrl($usedProduct));
             }
           }
         }
-        if($productType == self::PRODUCT_TYPE_GROUPED){
+        if ($productType == self::PRODUCT_TYPE_GROUPED) {
           $associatedProducts = $productTypeInstance->getAssociatedProducts($item);
-          foreach($associatedProducts as $associatedProduct){
+          foreach ($associatedProducts as $associatedProduct) {
             $childImages[] = $this->fixImagePath($this->imageHelper->getUrl($associatedProduct));
           }
         }
@@ -673,16 +680,21 @@ class Product extends AbstractAdapter
 
         $productStock = 0;
 
-        if($productType == self::PRODUCT_TYPE_SIMPLE || !in_array($productType, self::PRODUCT_TYPES)){
+        if (!$this->isStockManagedForProduct($item)) {
+          // Set default stock value for products with unmanaged stock
+          return $productStock = 10000; // Replace with your default value
+        }
+
+        if ($productType == self::PRODUCT_TYPE_SIMPLE || !in_array($productType, self::PRODUCT_TYPES)) {
           $productStock = $this->getProductStockStateQty($item);
           // If stock was 0, try to get it without looking at the scope.
           //if($productStock == 0){
           //  $productStock = $this->getSaleableStockBySku($item->getSku());
           //}
         }
-        if($productType == self::PRODUCT_TYPE_CONFIGURABLE){
+        if ($productType == self::PRODUCT_TYPE_CONFIGURABLE) {
           $usedProducts = $productTypeInstance->getUsedProducts($item);
-          foreach($usedProducts as $usedProduct){
+          foreach ($usedProducts as $usedProduct) {
             $productStock += $this->getProductStockStateQty($usedProduct);
           }
           //if($productStock == 0){
@@ -691,9 +703,9 @@ class Product extends AbstractAdapter
           //  }
           //}
         }
-        if($productType == self::PRODUCT_TYPE_GROUPED){
+        if ($productType == self::PRODUCT_TYPE_GROUPED) {
           $associatedProducts = $productTypeInstance->getAssociatedProducts($item);
-          foreach($associatedProducts as $associatedProduct){
+          foreach ($associatedProducts as $associatedProduct) {
             $productStock += $this->getProductStockStateQty($associatedProduct);
           }
           //if($productStock == 0){
@@ -702,7 +714,7 @@ class Product extends AbstractAdapter
           //  }
           //}
         }
-        if($productType == self::PRODUCT_TYPE_BUNDLE){
+        if ($productType == self::PRODUCT_TYPE_BUNDLE) {
           $productsArray = array();
           $selectionCollection = $item->getTypeInstance(true)->getSelectionsCollection(
             $item->getTypeInstance(true)->getOptionsIds($item),
@@ -720,7 +732,7 @@ class Product extends AbstractAdapter
           foreach ($productsArray as $bundle_item) {
             $bundle_option_min_stock = 0;
             foreach ($bundle_item as $bundle_option) {
-              if ((integer)$bundle_option['min_qty'] <= $bundle_option['stock']) {
+              if ((int)$bundle_option['min_qty'] <= $bundle_option['stock']) {
                 $bundle_option_min_stock = ($bundle_option_min_stock == 0) ? $bundle_option['stock'] : $bundle_option_min_stock;
                 $bundle_option_min_stock = ($bundle_option_min_stock < $bundle_option['stock']) ? $bundle_option['stock'] : $bundle_option_min_stock;
               }
@@ -738,22 +750,22 @@ class Product extends AbstractAdapter
         $productTypeInstance = $item->getTypeInstance();
         $productStock = 0;
 
-        if( $productType == self::PRODUCT_TYPE_SIMPLE || !in_array($productType, self::PRODUCT_TYPES) ){
+        if ($productType == self::PRODUCT_TYPE_SIMPLE || !in_array($productType, self::PRODUCT_TYPES)) {
           $productStock = $this->getSourceStockBySku($item->getSku());
         }
-        if( $productType == self::PRODUCT_TYPE_CONFIGURABLE){
+        if ($productType == self::PRODUCT_TYPE_CONFIGURABLE) {
           $usedProducts = $productTypeInstance->getUsedProducts($item);
-          foreach($usedProducts as $usedProduct){
+          foreach ($usedProducts as $usedProduct) {
             $productStock += $this->getSourceStockBySku($usedProduct->getSku());
           }
         }
-        if( $productType == self::PRODUCT_TYPE_GROUPED ){
+        if ($productType == self::PRODUCT_TYPE_GROUPED) {
           $associatedProducts = $productTypeInstance->getAssociatedProducts($item);
-          foreach($associatedProducts as $associatedProduct){
+          foreach ($associatedProducts as $associatedProduct) {
             $productStock += $this->getSourceStockBySku($associatedProduct->getSku());
           }
         }
-        if( $productType == self::PRODUCT_TYPE_BUNDLE ){
+        if ($productType == self::PRODUCT_TYPE_BUNDLE) {
           $productsArray = array();
           $selectionCollection = $item->getTypeInstance(true)->getSelectionsCollection(
             $item->getTypeInstance(true)->getOptionsIds($item),
@@ -771,7 +783,7 @@ class Product extends AbstractAdapter
           foreach ($productsArray as $bundle_item) {
             $bundle_option_min_stock = 0;
             foreach ($bundle_item as $bundle_option) {
-              if ((integer)$bundle_option['min_qty'] <= $bundle_option['stock']) {
+              if ((int)$bundle_option['min_qty'] <= $bundle_option['stock']) {
                 $bundle_option_min_stock = ($bundle_option_min_stock == 0) ? $bundle_option['stock'] : $bundle_option_min_stock;
                 $bundle_option_min_stock = ($bundle_option_min_stock < $bundle_option['stock']) ? $bundle_option['stock'] : $bundle_option_min_stock;
               }
@@ -784,7 +796,6 @@ class Product extends AbstractAdapter
         }
         return $productStock;
       });
-
     } catch (\Exception $e) {
       $this->clerk_logger->error('Getting Field Handlers Error', ['error' => $e->getMessage()]);
     }
@@ -795,10 +806,11 @@ class Product extends AbstractAdapter
    * @param string|int $sku
    * @return int
    */
-  protected function getSourceStockBySku($sku){
+  protected function getSourceStockBySku($sku)
+  {
     $sourceItems = $this->itemSource->execute($sku);
     $stockTotal = 0;
-    foreach($sourceItems as $sourceItem){
+    foreach ($sourceItems as $sourceItem) {
       $stockTotal += $sourceItem->getQuantity();
     }
     return $stockTotal;
@@ -807,9 +819,10 @@ class Product extends AbstractAdapter
   /**
    * Get Product stock from interface
    */
-  protected function getProductStockStateQty($product){
+  protected function getProductStockStateQty($product)
+  {
     $product_stock = $this->stockStateInterface->getStockQty($product->getId(), $product->getStore()->getWebsiteId());
-    if(isset($product_stock)){
+    if (isset($product_stock)) {
       return $product_stock;
     } else {
       return 0;
@@ -823,12 +836,13 @@ class Product extends AbstractAdapter
    * @return int
    */
 
-  protected function getSaleableStockBySku($sku){
+  protected function getSaleableStockBySku($sku)
+  {
     $stockInfo = $this->getSalableQuantityDataBySku->execute($sku);
     $stockQuantity = 0;
-    if(!empty($stockInfo)){
-      foreach($stockInfo as $stockEntity){
-        if(array_key_exists('qty', $stockEntity)){
+    if (!empty($stockInfo)) {
+      foreach ($stockInfo as $stockEntity) {
+        if (array_key_exists('qty', $stockEntity)) {
           $stockQuantity += $stockEntity['qty'];
         }
       }
@@ -841,7 +855,8 @@ class Product extends AbstractAdapter
    * Get Product price with contextual taxes
    */
 
-  protected function getProductTaxPrice($product, $price, $withTax=true){
+  protected function getProductTaxPrice($product, $price, $withTax = true)
+  {
     $store = $this->getStoreFromContext();
     return $this->taxHelper->getTaxPrice($product, $price, $withTax, null, null, null, $store, null, true);
   }
@@ -851,8 +866,9 @@ class Product extends AbstractAdapter
    * @param float|int $price
    * @return float|int $price
    */
-  protected function formatPrice($price){
-    return (float) number_format( (float) $price, 2, ".", "" );
+  protected function formatPrice($price)
+  {
+    return (float) number_format((float) $price, 2, ".", "");
   }
 
   /**
@@ -860,26 +876,29 @@ class Product extends AbstractAdapter
    * @param string $imagePath
    * @return string $imagePath
    */
-  protected function fixImagePath($imagePath){
-    if(strpos($imagePath, 'catalog/product/') > -1){
+  protected function fixImagePath($imagePath)
+  {
+    if (strpos($imagePath, 'catalog/product/') > -1) {
       return $imagePath;
     } else {
       return str_replace('catalog/product', 'catalog/product/', $imagePath);
     }
   }
 
-  protected function getStoreFromContext(){
+  protected function getStoreFromContext()
+  {
     $requestParams = $this->requestInterface->getParams();
-    if(array_key_exists('scope_id', $requestParams)){
+    if (array_key_exists('scope_id', $requestParams)) {
       return $this->storeManager->getStore($requestParams['scope_id']);
     } else {
       return $this->storeManager->getStore();
     }
   }
 
-  protected function getStoreIdFromContext(){
+  protected function getStoreIdFromContext()
+  {
     $requestParams = $this->requestInterface->getParams();
-    if (array_key_exists('scope_id', $requestParams)){
+    if (array_key_exists('scope_id', $requestParams)) {
       return $requestParams['scope_id'];
     } else {
       return $this->storeManager->getStore()->getId();
@@ -930,16 +949,23 @@ class Product extends AbstractAdapter
       foreach ($fields as $key => $field) {
 
         $fields[$key] = $field;
-
       }
 
       return $fields;
-
     } catch (\Exception $e) {
 
       $this->clerk_logger->error('Getting Default Fields Error', ['error' => $e->getMessage()]);
-
     }
   }
-}
 
+  /**
+   * Check if stock is managed for the product
+   * @param \Magento\Catalog\Model\Product $product
+   * @return bool
+   */
+  private function isStockManagedForProduct($product)
+  {
+    $productExtension = $product->getExtensionAttributes();
+    return $productExtension && $productExtension->getStockItem() && $productExtension->getStockItem()->getManageStock();
+  }
+}
