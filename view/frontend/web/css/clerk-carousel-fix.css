@@ -1,0 +1,16 @@
+/**
+ * Clerk carousel fix for mobile touch events
+ * Prevents the page from jumping to top on mobile when swiping vertically
+ */
+.clerk-slider,
+.clerk-slider * {
+    touch-action: pan-x !important; /* Allow only horizontal panning */
+    -webkit-overflow-scrolling: touch; /* Improve scrolling on iOS */
+}
+
+/* Ensure parent containers don't interfere with vertical scrolling */
+.clerk-content {
+    touch-action: pan-y !important;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+} 
