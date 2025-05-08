@@ -1,34 +1,38 @@
 define([], function () {
   'use strict';
 
-  // Slider is whatever module Clerk uses internally (see next step)
+  // Mixin for Clerk slider to allow vertical scrolling
   return function (Slider) {
-
     return Slider.extend({
-
-      // touch start – remember where the finger began
+      // Remember touch start position
       _touchStart: function (e) {
         const t = e.touches[0];
         this.startX = t.clientX;
         this.startY = t.clientY;
-        this._super(e);                   // call original method
+        this._super(e); // Call original method
       },
 
-      // touch move – decide whether to block or let it scroll
+      // Only prevent default for horizontal movements
       _touchMove: function (e) {
-        const t = e.touches[0];
-        const dx = Math.abs(t.clientX - this.startX);
-        const dy = Math.abs(t.clientY - this.startY);
-
-        // If mainly vertical motion, don't prevent default and don't call super
-        if (dy > dx) {
-          // No preventDefault and no super call - let native scroll happen
-          return;
+        if (!e.cancelable) {
+          // Event already handled elsewhere
+          return this._super(e);
         }
 
-        // Only for horizontal swipes - prevent default and handle the swipe
+        const t = e.touches[0];
+        const dx = Math.abs(t.clientX - this.startX || 0);
+        const dy = Math.abs(t.clientY - this.startY || 0);
+
+        // For vertical scrolling, don't prevent default
+        if (dy > dx) {
+          // Let browser handle the vertical scroll naturally
+          // Still call super but WITHOUT preventDefault()
+          return this._super(e);
+        }
+
+        // For horizontal swipes - prevent default and handle in slider
         e.preventDefault();
-        this._super(e);
+        return this._super(e);
       }
     });
   };
