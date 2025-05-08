@@ -684,6 +684,11 @@ class Product extends AbstractAdapter
 
                 $productStock = 0;
 
+                if (!$this->isStockManagedForProduct($item)) {
+                    // Set default stock value for products with unmanaged stock
+                    return $productStock = 10000; // Replace with your default value
+                }
+
                 if ($productType == self::PRODUCT_TYPE_SIMPLE || !in_array($productType, self::PRODUCT_TYPES)) {
                     $productStock = $this->getProductStockStateQty($item);
                     // If stock was 0, try to get it without looking at the scope.
@@ -1003,4 +1008,16 @@ class Product extends AbstractAdapter
 
         }
     }
+
+        /**
+     * Check if stock is managed for the product
+     * @param \Magento\Catalog\Model\Product $product
+     * @return bool
+     */
+    private function isStockManagedForProduct($product)
+    {
+        $productExtension = $product->getExtensionAttributes();
+        return $productExtension && $productExtension->getStockItem() && $productExtension->getStockItem()->getManageStock();
+    }
+        
 }
