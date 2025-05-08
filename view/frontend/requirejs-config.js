@@ -6,5 +6,7 @@ var config = {
       'Clerk_Clerk/js/slider'               : { 'js/clerk-slider-mixin': true },
       'Clerk/js/slider'                     : { 'js/clerk-slider-mixin': true }
     }
-  }
+  },
+  // Auto-load our touch fix script
+  deps: ['js/clerk-touch-init']
 }; 

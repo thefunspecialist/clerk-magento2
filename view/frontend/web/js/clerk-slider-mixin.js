@@ -20,12 +20,13 @@ define([], function () {
         const dx = Math.abs(t.clientX - this.startX);
         const dy = Math.abs(t.clientY - this.startY);
 
+        // If mainly vertical motion, don't prevent default and don't call super
         if (dy > dx) {
-          // mainly vertical → don't interfere
+          // No preventDefault and no super call - let native scroll happen
           return;
         }
 
-        // horizontal swipe → keep current behaviour
+        // Only for horizontal swipes - prevent default and handle the swipe
         e.preventDefault();
         this._super(e);
       }
