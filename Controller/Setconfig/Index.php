@@ -37,7 +37,7 @@ class Index extends AbstractAction
     /**
      * @var WriterInterface
      */
-    protected $configWriter;
+    protected $config_writer;
 
     /**
      * @var ScopeConfigInterface
@@ -219,6 +219,10 @@ class Index extends AbstractAction
 
                     if ($key == "FACETED_SEARCH_ENABLED") {
                         $this->config_writer->save(Config::XML_PATH_FACETED_SEARCH_ENABLED, $value, $scope, $scopeId);
+                        $count++;
+                    }
+                    if ($key == "FACETS_IN_URL") {
+                        $this->config_writer->save(Config::XML_PATH_FACETS_IN_URL, $value, $scope, $scopeId);
                         $count++;
                     }
                     if ($key == "FACETED_SEARCH_DESIGN") {

@@ -17,6 +17,7 @@ use Psr\Log\LoggerInterface;
 use Magento\Customer\Api\CustomerMetadataInterface;
 use Magento\Framework\Webapi\Rest\Request as RequestApi;
 use Magento\Framework\App\ProductMetadataInterface;
+use Magento\Customer\Api\GroupRepositoryInterface;
 
 class Index extends AbstractAction
 {
@@ -57,6 +58,11 @@ class Index extends AbstractAction
     protected $eventPrefix = 'clerk_customer';
 
     /**
+     * @var GroupRepositoryInterface
+     */
+    protected $groupRepository;
+
+    /**
      * Customer controller constructor.
      *
      * @param Context $context
@@ -79,14 +85,15 @@ class Index extends AbstractAction
         RequestApi $request_api,
         SubscriberFactory $subscriberFactory,
         SubscriberCollectionFactory $subscriberCollectionFactory,
-        Api $api
+        Api $api,
+        GroupRepositoryInterface $groupRepository
     ) {
         $this->collectionFactory = $customerCollectionFactory;
         $this->clerk_logger = $clerk_logger;
         $this->_customerMetadata = $customerMetadata;
-        $this->_storeManager = $storeManager;
         $this->_subscriberFactory = $subscriberFactory;
         $this->_subscriberCollectionFactory = $subscriberCollectionFactory;
+        $this->groupRepository = $groupRepository;
 
         parent::__construct(
             $context,
@@ -132,6 +139,8 @@ class Index extends AbstractAction
                     $_customer['id'] = $customer['entity_id'];
                     $_customer['name'] = $customer['firstname'] . " " . (!is_null($customer['middlename']) ? $customer['middlename'] . " " : "") . $customer['lastname'];
                     $_customer['email'] = $customer['email'];
+                    $_customer['group_id'] = $customer['group_id'];
+                    $_customer['group_name'] = $this->groupRepository->getById($customer['group_id'])->getCode();
 
 
                     foreach ($Fields as $Field) {
@@ -152,7 +161,7 @@ class Index extends AbstractAction
                     if ($this->scopeConfig->getValue(Config::XML_PATH_SUBSCRIBER_SYNCHRONIZATION_ENABLED, $this->scope, $this->scopeid)) {
                         $sub_state = $subscriberInstance->loadByEmail($customer['email']);
                         if ($sub_state->getId()) {
-                            $_customer['subscribed'] = (bool) $sub_state->getSubscriberStatus();
+                            $_customer['subscribed'] = (bool) ($sub_state->getSubscriberStatus() == 1 && $sub_state->getCustomerId() == $customer['id']);
                         } else {
                             $_customer['subscribed'] = false;
                         }
@@ -172,7 +181,7 @@ class Index extends AbstractAction
                             $_sub = array();
                             $_sub['id'] = 'SUB' . $subscriber['subscriber_id'];
                             $_sub['email'] = $subscriber['subscriber_email'];
-                            $_sub['subscribed'] = (bool) $subscriber['subscriber_status'];
+                            $_sub['subscribed'] = (bool) ($subscriber['subscriber_status'] == 1 && $sub_state->getSubscriberEmail() == $subscriber['subscriber_email']);
                             $_sub['name'] = "";
                             $_sub['firstname'] = "";
                             $_sub['unsub_url'] = $sub_state->getUnsubscriptionLink();
@@ -205,10 +214,9 @@ class Index extends AbstractAction
 
     public function getCustomerCollection($page, $limit, $storeid)
     {
-        $store = $this->_storeManager->getStore($storeid);
         $customerCollection = $this->collectionFactory->create();
         $customerCollection->setOrder('title', 'ASC');
-        $customerCollection->addFilter('store_id', $store->getId());
+        $customerCollection->addFilter('store_id', $storeid);
         $customerCollection->setPageSize($limit);
         $customerCollection->setCurPage($page);
         return $customerCollection;

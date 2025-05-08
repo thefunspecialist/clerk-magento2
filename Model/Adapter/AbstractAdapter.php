@@ -185,7 +185,7 @@ abstract class AbstractAdapter
               } elseif (isset($usedProduct[$entityField])) {
                 $usedProductsAttributeValues[] = $this->getAttributeValue($usedProduct, $entityField);
               }
-              if(empty($usedProductsAttributeValues && $heavyAttributeQuery)) {
+              if(empty($usedProductsAttributeValues) && $heavyAttributeQuery) {
                 $attributeValue = $this->getAttributeValueHeavy($usedProduct, $field);
                 if(isset($attributeValue)){
                   $usedProductsAttributeValues[] = $attributeValue;
@@ -210,7 +210,7 @@ abstract class AbstractAdapter
               } elseif (isset($associatedProduct[$entityField])) {
                 $associatedProductsAttributeValues[] = $this->getAttributeValue($associatedProduct, $entityField);
               }
-              if(empty($associatedProductsAttributeValues && $heavyAttributeQuery)) {
+              if(empty($associatedProductsAttributeValues) && $heavyAttributeQuery) {
                 $attributeValue = $this->getAttributeValueHeavy($associatedProduct, $field);
                 if(isset($attributeValue)){
                   $associatedProductsAttributeValues[] = $attributeValue;
@@ -240,6 +240,20 @@ abstract class AbstractAdapter
           if($info['list_price'] === $info['list_price_excl_tax']){
             $info['list_price_excl_tax'] = $info['list_price'] / (1 + ($info['tax_rate'] / 100) );
           }
+      }
+
+      // Fix for including a list of Bundle Products child skus.
+      if($resourceItemTypeId == self::PRODUCT_TYPE_BUNDLE){
+        $bundle_skus = [];
+        $selections = $resourceItem->getTypeInstance(true)->getSelectionsCollection($resourceItem->getTypeInstance(true)->getOptionsIds($resourceItem), $resourceItem);
+        if( !empty($selections) ){
+          foreach($selections as $selection){
+            if( is_object($selection) ){
+              $bundle_skus[] = $selection->getSku();
+            }
+          }
+        }
+        $info['bundle_skus'] = $bundle_skus;
       }
 
       return $info;
@@ -322,7 +336,7 @@ abstract class AbstractAdapter
    * Flatten array
    *
    * @param array $array
-   * @return arrray $array
+   * @return array $array
    */
   public function flattenArray($array)
   {
